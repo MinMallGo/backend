@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-func main() {
-	mkdir()
-}
-
 func mkdir() {
 	s := []string{
 		"api",

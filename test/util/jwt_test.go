@@ -3,11 +3,12 @@ package util
 import (
 	"fmt"
 	"mall_backend/structure"
+	"mall_backend/util"
 	"testing"
 )
 
 func TestJWTEncode(t *testing.T) {
-	token, err := JWTEncode(structure.JWTUserInfo{
+	token, err := util.JWTEncode(structure.JWTUserInfo{
 		Username: "小王",
 		UserID:   1,
 		Role:     "Admin",
@@ -17,7 +18,7 @@ func TestJWTEncode(t *testing.T) {
 		t.Fatal("encode err:", err)
 	}
 
-	decode, err := JWTDecode(token)
+	decode, err := util.JWTDecode(token)
 	if err != nil {
 		t.Fatal("decode err:", err)
 	}
