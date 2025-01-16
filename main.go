@@ -35,4 +35,7 @@ func initNecessary() {
 	if _, err := util.RedisInstance(); err != nil {
 		log.Println(err)
 	}
+
+	// 注册自定义验证规则
+	util.ValidatorRegister()
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"mall_backend/response"
 	"mall_backend/util"
@@ -8,10 +9,9 @@ import (
 
 func AuthVerify() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// JWT验证登录
-		auth := c.GetHeader("Authorization")
-		decode, err := util.JWTDecode(auth)
-		if err != nil || decode.UserID == 0 {
+		token := c.GetHeader("token")
+		login, err := util.CacheClient().Get(context.Background(), token).Result()
+		if len(login) < 2 || err != nil {
 			// 返回请登录的提示
 			response.Failure(c, "请登录后操作")
 			c.Abort() // 终止请求
