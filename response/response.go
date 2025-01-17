@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"mall_backend/util"
 	"net/http"
 )
 
@@ -41,11 +42,7 @@ func Failure(c *gin.Context, message string) {
 func Error(c *gin.Context, err error) {
 	var errs validator.ValidationErrors
 	if errors.As(err, &errs) {
-		errMsg := ""
-		for _, v := range errs.Translate(translator) {
-			errMsg += v + ", "
-		}
-		Failure(c, errMsg)
+		Failure(c, util.HandleValidationError(err))
 		return
 	}
 

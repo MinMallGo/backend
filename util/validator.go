@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -34,7 +35,8 @@ func ValidatorRegister() {
 // HandleValidationError 接管验证器错误
 func HandleValidationError(err error) string {
 	message := ""
-	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
 		for index, fe := range validationErrors {
 			message += translateError(fe)
 			if index < len(validationErrors)-1 {
