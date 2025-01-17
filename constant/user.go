@@ -5,3 +5,8 @@ const (
 	ShopUser
 	AdminUser int = 999
 )
+
+const (
+	BanStatus    = false
+	NormalStatus = true
+)

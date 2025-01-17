@@ -67,7 +67,7 @@ func Register(c *gin.Context, register *dto.UserRegister) {
 		}
 
 		if res.Phone == register.Phone {
-			msg += "，手机号已经被注册"
+			msg += "手机号已经被注册"
 		}
 
 		response.Failure(c, msg)

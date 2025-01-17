@@ -19,10 +19,12 @@ func EncryptPassword(password string) string {
 	return hex.EncodeToString(x[:])
 }
 
+// GenSalt 生成随机6位数的小写字符串
 func GenSalt() string {
 	return genRandomString(6)
 }
 
+// UserCode 生成随机16位数的小写字符串
 func UserCode() string {
 	return genRandomString(16)
 }

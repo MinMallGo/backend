@@ -7,6 +7,7 @@ import (
 	"mall_backend/service"
 )
 
+// Login 普通用户登录
 func Login(c *gin.Context) {
 	param := &dto.UserLogin{}
 	if err := c.ShouldBind(param); err != nil {
