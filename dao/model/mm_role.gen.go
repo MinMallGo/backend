@@ -16,7 +16,7 @@ type MmRole struct {
 	Name       string    `gorm:"column:name;comment:角色名" json:"name"`                     // 角色名
 	Powers     string    `gorm:"column:powers;comment:包含的权限， 用 逗号 分割" json:"powers"`      // 包含的权限， 用 逗号 分割
 	IsMenu     int32     `gorm:"column:is_menu;comment:是否菜单角色" json:"is_menu"`            // 是否菜单角色
-	Status     int32     `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"` // 1 正常 0 删除
+	Status     bool      `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"` // 1 正常 0 删除
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

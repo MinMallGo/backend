@@ -20,7 +20,7 @@ type MmCoupon struct {
 	Code       string    `gorm:"column:code;comment:优惠券唯一表示，可用于核销等" json:"code"`                      // 优惠券唯一表示，可用于核销等
 	StartTime  time.Time `gorm:"column:start_time;not null;comment:优惠券开始时间" json:"start_time"`        // 优惠券开始时间
 	EndTime    time.Time `gorm:"column:end_time;comment:优惠券结束时间" json:"end_time"`                     // 优惠券结束时间
-	Status     int32     `gorm:"column:status;default:1" json:"status"`
+	Status     bool      `gorm:"column:status;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

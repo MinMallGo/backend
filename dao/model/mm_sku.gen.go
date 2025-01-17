@@ -17,7 +17,7 @@ type MmSku struct {
 	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`            // 规格名称
 	Desc       string    `gorm:"column:desc;not null;comment:描述" json:"desc"`              // 描述
 	ParentID   int32     `gorm:"column:parent_id;not null;comment:0表示顶层" json:"parent_id"` // 0表示顶层
-	Status     int32     `gorm:"column:status;not null;default:1" json:"status"`
+	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

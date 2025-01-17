@@ -18,7 +18,7 @@ type MmPower struct {
 	ParentID   int32     `gorm:"column:parent_id;not null;comment:父级，0则表示处于最顶层" json:"parent_id"` // 父级，0则表示处于最顶层
 	Path       string    `gorm:"column:path;comment:保存所有上级" json:"path"`                          // 保存所有上级
 	IsMenu     int32     `gorm:"column:is_menu;comment:是否是菜单" json:"is_menu"`                     // 是否是菜单
-	Status     int32     `gorm:"column:status;not null;default:1" json:"status"`
+	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

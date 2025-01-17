@@ -25,7 +25,7 @@ type MmOrder struct {
 	PaymentWay    int32     `gorm:"column:payment_way;comment:支付方式：wx_pay 996 ali_pay 700 card_pay 789 ...." json:"payment_way"` // 支付方式：wx_pay 996 ali_pay 700 card_pay 789 ....
 	IsSign        int32     `gorm:"column:is_sign;comment:是否签收" json:"is_sign"`                                                  // 是否签收
 	SignDate      time.Time `gorm:"column:sign_date;comment:签收时间-7天自动签收" json:"sign_date"`                                       // 签收时间-7天自动签收
-	Status        int32     `gorm:"column:status;default:1;comment:默认启用吧" json:"status"`                                         // 默认启用吧
+	Status        bool      `gorm:"column:status;default:1;comment:默认启用吧" json:"status"`                                         // 默认启用吧
 	CreateTime    time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime    time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime    time.Time `gorm:"column:delete_time" json:"delete_time"`

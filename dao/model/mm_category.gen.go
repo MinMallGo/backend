@@ -14,9 +14,10 @@ const TableNameMmCategory = "mm_category"
 type MmCategory struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	Name       string    `gorm:"column:name;not null" json:"name"`
+	Code       string    `gorm:"column:code;not null;comment:设置个唯一编码" json:"code"` // 设置个唯一编码
 	ParentID   int32     `gorm:"column:parent_id;not null" json:"parent_id"`
-	Path       string    `gorm:"column:path;not null;comment:路径，所有上级" json:"path"`        // 路径，所有上级
-	Status     int32     `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"` // 1 正常 0 删除
+	Path       string    `gorm:"column:path;not null;comment:路径，所有上级" json:"path"`         // 路径，所有上级
+	Status     bool      `gorm:"column:status;default:1;comment:1 正常 -1 删除" json:"status"` // 1 正常 -1 删除
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

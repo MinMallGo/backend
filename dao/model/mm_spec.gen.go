@@ -17,7 +17,7 @@ type MmSpec struct {
 	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`     // 规格名称
 	Price      int32     `gorm:"column:price;comment:price * 100" json:"price"`     // price * 100
 	Strock     int32     `gorm:"column:strock;comment:商品库存" json:"strock"`          // 商品库存
-	Status     int32     `gorm:"column:status;not null;default:1" json:"status"`
+	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

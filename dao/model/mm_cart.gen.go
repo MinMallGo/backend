@@ -17,7 +17,7 @@ type MmCart struct {
 	SpuID      int32     `gorm:"column:spu_id;comment:商品ID" json:"spu_id"`                // 商品ID
 	SkuID      int32     `gorm:"column:sku_id;comment:规格ID" json:"sku_id"`                // 规格ID
 	Nums       int32     `gorm:"column:nums;comment:预选数量" json:"nums"`                    // 预选数量
-	Status     int32     `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"` // 1 正常 0 删除
+	Status     bool      `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"` // 1 正常 0 删除
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`

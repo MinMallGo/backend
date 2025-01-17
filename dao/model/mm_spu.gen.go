@@ -19,7 +19,7 @@ type MmSpu struct {
 	BrandID    string    `gorm:"column:brand_id;not null;comment:所属品牌 // TODO" json:"brand_id"` // 所属品牌 // TODO
 	CategoryID string    `gorm:"column:category_id;not null;comment:商品分类" json:"category_id"`   // 商品分类
 	MerchantID int32     `gorm:"column:merchant_id;not null;comment:所属商户" json:"merchant_id"`   // 所属商户
-	Status     int32     `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"`       // 1 正常 0 删除
+	Status     bool      `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"`       // 1 正常 0 删除
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`
