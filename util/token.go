@@ -29,6 +29,10 @@ func UserCode() string {
 	return genRandomString(16)
 }
 
+func SpuCode() string {
+	return genRandomString(11)
+}
+
 func genRandomString(lens int) string {
 	var s []byte
 	for i := 0; i <= lens; i++ {

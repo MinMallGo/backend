@@ -1,39 +1,47 @@
 package service
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
 	constants "mall_backend/constant"
 	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/response"
 	"mall_backend/util"
-	"strconv"
 	"strings"
 	"time"
 )
 
-// CategoryCreate 创建spu分类
-func CategoryCreate(c *gin.Context, create *dto.CategoryCreate) {
-	// 查询父级的id，并组装path
-	levelPath, err := genCategoryPath(create.ParentId)
-	if err != nil {
-
+// SpuCreate 创建spu分类
+func SpuCreate(c *gin.Context, create *dto.SpuCreate) {
+	if !CategoryExists(create.CategoryId) {
+		response.Failure(c, "请选择正确的分类")
+		return
 	}
 
-	param := &model.MmCategory{
+	if create.MerchantId != 0 && !MerchantExists(create.MerchantId) {
+		response.Failure(c, "请选择正确的商户")
+		return
+	}
+
+	images := ""
+	if len(create.Img) > 0 {
+		images += strings.Join(create.Img, ",")
+	}
+
+	param := &model.MmSpu{
 		Name:       create.Name,
-		ParentID:   int32(create.ParentId),
-		Code:       util.GenSalt(),
-		Path:       levelPath,
+		Desc:       create.Desc,
+		Imgs:       images,
+		Code:       util.SpuCode(),
+		BrandID:    int32(create.BrandId), // TODO 需要验证和绑定品牌
+		CategoryID: int32(create.CategoryId),
+		MerchantID: int32(create.MerchantId),
 		Status:     constants.NormalStatus,
 		CreateTime: time.Now(),
 		UpdateTime: util.MinDateTime(),
 		DeleteTime: util.MinDateTime(),
 	}
-
-	tx := util.DBClient().Model(&model.MmCategory{}).Create(&param)
+	tx := util.DBClient().Model(&model.MmSpu{}).Create(&param)
 	if tx.Error != nil {
 		response.Failure(c, "创建失败")
 		return
@@ -43,15 +51,14 @@ func CategoryCreate(c *gin.Context, create *dto.CategoryCreate) {
 	return
 }
 
-// CategoryDelete 删除spu分类
-func CategoryDelete(c *gin.Context, delete *dto.CategoryDelete) {
-	update := &model.MmCategory{
+// SpuDelete 删除spu分类
+func SpuDelete(c *gin.Context, delete *dto.SpuDelete) {
+	update := &model.MmSpu{
 		Status:     constants.BanStatus,
 		DeleteTime: time.Now(),
 	}
-	log.Println(update)
 
-	tx := util.DBClient().Model(&model.MmCategory{}).Select("status", "delete_time").Where("id = ?", delete.Id).Updates(update)
+	tx := util.DBClient().Model(&model.MmSpu{}).Select("status", "delete_time").Where("id = ?", delete.Id).Updates(update)
 	if tx.Error != nil {
 		response.Failure(c, "删除失败")
 		return
@@ -61,11 +68,34 @@ func CategoryDelete(c *gin.Context, delete *dto.CategoryDelete) {
 	return
 }
 
-// CategoryUpdate 修改spu的分类信息
-func CategoryUpdate(c *gin.Context, update *dto.CategoryUpdate) {
-	// 额 == ，这里似乎要重新组织一下path，因为有可能改了parent_id
-	update.UpdateTime = time.Now()
-	tx := util.DBClient().Model(&model.MmCategory{}).Where("id = ?", update.Id).Updates(update)
+// SpuUpdate 修改spu的分类信息
+func SpuUpdate(c *gin.Context, update *dto.SpuUpdate) {
+	if !CategoryExists(update.CategoryId) {
+		response.Failure(c, "请选择正确的分类")
+		return
+	}
+
+	if update.CategoryId != 0 && !MerchantExists(update.MerchantId) {
+		response.Failure(c, "请选择正确的商户")
+		return
+	}
+
+	images := ""
+	if len(update.Img) > 0 {
+		images += strings.Join(update.Img, ",")
+	}
+
+	param := &model.MmSpu{
+		Name:       update.Name,
+		Desc:       update.Desc,
+		Imgs:       images,
+		BrandID:    int32(update.BrandId),
+		CategoryID: int32(update.CategoryId),
+		MerchantID: int32(update.MerchantId),
+		UpdateTime: time.Now(),
+	}
+
+	tx := util.DBClient().Model(&model.MmSpu{}).Where("status = ?", constants.NormalStatus).Where("id = ?", update.Id).Updates(param)
 	if tx.Error != nil {
 		response.Failure(c, tx.Error.Error())
 		return
@@ -75,10 +105,10 @@ func CategoryUpdate(c *gin.Context, update *dto.CategoryUpdate) {
 	return
 }
 
-// CategorySearch 查询
-func CategorySearch(c *gin.Context, search *dto.CategorySearch) {
+// SpuSearch 查询
+func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
 	// id, name, page, limit
-	category := &[]model.MmCategory{}
+	category := &[]dto.SpuSearchResponse{}
 
 	// 先写吧，优化等以后再来说
 
@@ -96,7 +126,22 @@ func CategorySearch(c *gin.Context, search *dto.CategorySearch) {
 		param = append(param, "%"+search.Name+"%")
 	}
 
-	tx := util.DBClient().Model(&model.MmCategory{}).Offset((search.Page-1)*search.Limit).Limit(search.Limit).Where(whereStr, param...).Find(&category)
+	if search.MerchantId != 0 {
+		whereStr += " AND merchant_id = ?"
+		param = append(param, search.MerchantId)
+	}
+
+	if search.CategoryId != 0 {
+		whereStr += " AND category_id = ?"
+		param = append(param, search.CategoryId)
+	}
+
+	tx := util.DBClient().Model(&model.MmSpu{}).Debug().
+		Offset((search.Page-1)*search.Limit).
+		Limit(search.Limit).
+		Where(whereStr, param...).
+		Preload("Category").
+		Find(&category)
 	if tx.Error != nil {
 		response.Failure(c, tx.Error.Error())
 		return
@@ -106,22 +151,12 @@ func CategorySearch(c *gin.Context, search *dto.CategorySearch) {
 	return
 }
 
-// 根据提供的parent_id，构造
-func genCategoryPath(parentId int) (string, error) {
-	// 查询父级的id，并组装path
-	levelPath := ""
-	if parentId != 0 {
-		res := &model.MmCategory{}
-		tx := util.DBClient().Model(&model.MmCategory{}).Where("id = ? AND status = ?", parentId, constants.NormalStatus).First(&res)
-		if tx.Error != nil {
-			return levelPath, errors.New("请选择正确的父级数据")
-		}
-
-		res.Path = strings.TrimSpace(res.Path)
-		if len(res.Path) > 1 {
-			levelPath = res.Path + "," + strconv.Itoa(int(res.ID))
-		}
-	}
-
-	return levelPath, nil
+// SpuExists 通过ID查询该商品是否可用
+func SpuExists(spuID int) bool {
+	tx := util.DBClient().Model(&model.MmSpu{}).
+		Select("id").
+		Where("status = ?", constants.NormalStatus).
+		Where("id = ?", spuID).
+		First(&model.MmCategory{})
+	return tx.RowsAffected != 0
 }

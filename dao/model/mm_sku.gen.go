@@ -13,10 +13,9 @@ const TableNameMmSku = "mm_sku"
 // MmSku 规格表，保存通用规格信息，详细的规格信息以及价格等拆分到了spec
 type MmSku struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"`        // 商品ID
-	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`            // 规格名称
-	Desc       string    `gorm:"column:desc;not null;comment:描述" json:"desc"`              // 描述
-	ParentID   int32     `gorm:"column:parent_id;not null;comment:0表示顶层" json:"parent_id"` // 0表示顶层
+	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"` // 商品ID
+	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`     // 规格名称
+	Desc       string    `gorm:"column:desc;not null;comment:描述" json:"desc"`       // 描述
 	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`

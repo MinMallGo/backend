@@ -17,6 +17,13 @@ var fieldMaP = map[string]string{
 	"Sex":            "性别",
 	"Birthday":       "出生日期",
 	"Phone":          "手机号",
+	"CategoryId":     "商品分类",
+	"MerchantId":     "商户",
+	"Name":           "名称",
+	"Id":             "编号",
+	"SkuID":          "规格",
+	"Price":          "价格",
+	"Stock":          "库存",
 }
 
 // ValidatorRegister 注册自定义验证规则

@@ -19,7 +19,7 @@ type MmUser struct {
 	Salt          string    `gorm:"column:salt;not null;comment:密码盐" json:"salt"`                                     // 密码盐
 	Sex           int32     `gorm:"column:sex;not null;default:1;comment:sex : 1 男 0 女" json:"sex"`                   // sex : 1 男 0 女
 	Birthday      time.Time `gorm:"column:birthday;comment:出生日期。如果没填就是注册的时间" json:"birthday"`                         // 出生日期。如果没填就是注册的时间
-	Type          int32     `gorm:"column:type;not null;default:1;comment:1 普通用户 2 商户 999 表示管理员" json:"type"`         // 1 普通用户 2 商户 999 表示管理员
+	Type          int32     `gorm:"column:type;not null;default:1;comment:1 普通用户 777 商户 999 表示管理员" json:"type"`       // 1 普通用户 777 商户 999 表示管理员
 	Role          string    `gorm:"column:role;not null;comment:用户角色，一个用户可以对应多个角色" json:"role"`                       // 用户角色，一个用户可以对应多个角色
 	Phone         string    `gorm:"column:phone;comment:手机号" json:"phone"`                                            // 手机号
 	ThirdParty    string    `gorm:"column:third_party;comment:保存第三方登录方式的信息，比如什么微信登录，邮箱登录之类的" json:"third_party"`      // 保存第三方登录方式的信息，比如什么微信登录，邮箱登录之类的

@@ -115,3 +115,14 @@ func Register(c *gin.Context, register *dto.UserRegister) {
 	response.Success(c, resp)
 	return
 }
+
+// MerchantExists 通过商户ID 查询商户是否存在
+func MerchantExists(merchantID int) bool {
+	tx := util.DBClient().Model(&model.MmUser{}).
+		Select("id").
+		Where("status = ?", constants.NormalStatus).
+		Where("type = ?", constants.ShopUser).
+		Where("id = ?", merchantID).
+		First(&model.MmUser{})
+	return tx.RowsAffected != 0
+}

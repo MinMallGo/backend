@@ -14,10 +14,11 @@ const TableNameMmSpu = "mm_spu"
 type MmSpu struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	Name       string    `gorm:"column:name;not null;comment:商品名字" json:"name"`                 // 商品名字
+	Code       string    `gorm:"column:code;not null;comment:商品标识" json:"code"`                 // 商品标识
 	Desc       string    `gorm:"column:desc;comment:描述" json:"desc"`                            // 描述
 	Imgs       string    `gorm:"column:imgs;comment:商品图片" json:"imgs"`                          // 商品图片
-	BrandID    string    `gorm:"column:brand_id;not null;comment:所属品牌 // TODO" json:"brand_id"` // 所属品牌 // TODO
-	CategoryID string    `gorm:"column:category_id;not null;comment:商品分类" json:"category_id"`   // 商品分类
+	BrandID    int32     `gorm:"column:brand_id;not null;comment:所属品牌 // TODO" json:"brand_id"` // 所属品牌 // TODO
+	CategoryID int32     `gorm:"column:category_id;not null;comment:商品分类" json:"category_id"`   // 商品分类
 	MerchantID int32     `gorm:"column:merchant_id;not null;comment:所属商户" json:"merchant_id"`   // 所属商户
 	Status     bool      `gorm:"column:status;default:1;comment:1 正常 0 删除" json:"status"`       // 1 正常 0 删除
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
