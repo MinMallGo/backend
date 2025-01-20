@@ -24,6 +24,10 @@ var fieldMaP = map[string]string{
 	"SkuID":          "规格",
 	"Price":          "价格",
 	"Stock":          "库存",
+	"Type":           "类型",
+	"MinSpend":       "最小消费",
+	"StartTime":      "开始时间",
+	"EndTime":        "结束时间",
 }
 
 // ValidatorRegister 注册自定义验证规则

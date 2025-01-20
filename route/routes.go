@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	coupon "mall_backend/api/v1/coupon"
 	"mall_backend/api/v1/sku"
 	spec "mall_backend/api/v1/spec"
 	"mall_backend/api/v1/spu"
@@ -45,6 +46,13 @@ func Register(r *gin.Engine) {
 		v1.POST("/spec/delete", spec.DeleteSpec)
 		v1.POST("/spec/update", spec.UpdateSpec)
 		v1.POST("/spec/search", spec.SearchSpec)
+		// spec的操作
+
+		// coupon的操作 // TODO 这个玩意儿应该是放在Admin下面的。或者说是商户下面
+		v1.POST("/coupon/create", coupon.CreateCoupon)
+		v1.POST("/coupon/delete", coupon.DeleteCoupon)
+		v1.POST("/coupon/update", coupon.UpdateCoupon)
+		v1.POST("/coupon/search", coupon.SearchCoupon)
 		// spec的操作
 	}
 }

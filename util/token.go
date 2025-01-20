@@ -33,6 +33,10 @@ func SpuCode() string {
 	return genRandomString(11)
 }
 
+func CouponCode() string {
+	return genRandomString(13)
+}
+
 func genRandomString(lens int) string {
 	var s []byte
 	for i := 0; i <= lens; i++ {
