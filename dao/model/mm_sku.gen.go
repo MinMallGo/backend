@@ -10,12 +10,13 @@ import (
 
 const TableNameMmSku = "mm_sku"
 
-// MmSku 规格表，保存通用规格信息，详细的规格信息以及价格等拆分到了spec
+// MmSku  规格详细表- 保存规格的详细信息
 type MmSku struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"` // 商品ID
-	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`     // 规格名称
-	Desc       string    `gorm:"column:desc;not null;comment:描述" json:"desc"`       // 描述
+	Title      string    `gorm:"column:title;not null;comment:规格的组合名称" json:"title"` // 规格的组合名称
+	Price      int32     `gorm:"column:price;comment:price * 100" json:"price"`      // price * 100
+	Strock     int32     `gorm:"column:strock;comment:商品库存" json:"strock"`           // 商品库存
+	Spces      string    `gorm:"column:spces;comment:存规格的json格式数据" json:"spces"`     // 存规格的json格式数据
 	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`

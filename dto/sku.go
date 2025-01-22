@@ -34,3 +34,8 @@ type SkuSearchResponse struct {
 	model.MmSku
 	Specs *[]model.MmSpec `json:"specs" gorm:"foreignkey:SkuID"`
 }
+
+type ReasonableValue struct {
+	Price int `json:"price" binding:"omitempty,gte=0"`
+	Stock int `json:"stock" binding:"omitempty,gt=0"`
+}

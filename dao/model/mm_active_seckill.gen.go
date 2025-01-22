@@ -13,9 +13,10 @@ const TableNameMmActiveSeckill = "mm_active_seckill"
 // MmActiveSeckill 秒杀表
 type MmActiveSeckill struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpuID      int32     `gorm:"column:spu_id;not null" json:"spu_id"`
-	SkuID      int32     `gorm:"column:sku_id;not null" json:"sku_id"`
-	Stock      int32     `gorm:"column:stock;not null;comment:库存" json:"stock"` // 库存
+	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"`    // 商品ID
+	SkuID      int32     `gorm:"column:sku_id;not null;comment:规格ID" json:"sku_id"`    // 规格ID
+	SpecID     int32     `gorm:"column:spec_id;not null;comment:具体的规格" json:"spec_id"` // 具体的规格
+	Stock      int32     `gorm:"column:stock;not null;comment:库存" json:"stock"`        // 库存
 	StartTime  time.Time `gorm:"column:start_time" json:"start_time"`
 	EndTime    time.Time `gorm:"column:end_time" json:"end_time"`
 	Name       string    `gorm:"column:name;not null" json:"name"`

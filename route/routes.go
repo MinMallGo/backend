@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"mall_backend/api/v1/active/seckill"
 	coupon "mall_backend/api/v1/coupon"
 	"mall_backend/api/v1/sku"
 	spec "mall_backend/api/v1/spec"
@@ -54,5 +55,9 @@ func Register(r *gin.Engine) {
 		v1.POST("/coupon/update", coupon.UpdateCoupon)
 		v1.POST("/coupon/search", coupon.SearchCoupon)
 		// spec的操作
+
+		// sec_kill
+		v1.POST("/sec_kill/create", seckill.CreateSecKill)
+		// sec_kill
 	}
 }
