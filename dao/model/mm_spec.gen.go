@@ -12,15 +12,15 @@ const TableNameMmSpec = "mm_spec"
 
 // MmSpec  规格详细表- 保存规格的详细信息
 type MmSpec struct {
-	ID          int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpuID       int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"`                   // 商品ID
-	SkuID       int32     `gorm:"column:sku_id;not null;comment:规格组合ID" json:"sku_id"`                 // 规格组合ID
-	SpecKeyID   int32     `gorm:"column:spec_key_id;not null;comment:单个规格值的ID" json:"spec_key_id"`     // 单个规格值的ID
-	SpecValueID int32     `gorm:"column:spec_value_id;not null;comment:单个规格值的ID" json:"spec_value_id"` // 单个规格值的ID
-	Status      bool      `gorm:"column:status;not null;default:1" json:"status"`
-	CreateTime  time.Time `gorm:"column:create_time" json:"create_time"`
-	UpdateTime  time.Time `gorm:"column:update_time" json:"update_time"`
-	DeleteTime  time.Time `gorm:"column:delete_time" json:"delete_time"`
+	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"`         // 商品ID
+	SkuID      int32     `gorm:"column:sku_id;not null;comment:规格组合ID" json:"sku_id"`       // 规格组合ID
+	KeyID      int32     `gorm:"column:key_id;not null;comment:单个规格值的ID" json:"key_id"`     // 单个规格值的ID
+	ValueID    int32     `gorm:"column:value_id;not null;comment:单个规格值的ID" json:"value_id"` // 单个规格值的ID
+	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
+	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
+	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
+	DeleteTime time.Time `gorm:"column:delete_time" json:"delete_time"`
 }
 
 // TableName MmSpec's table name
