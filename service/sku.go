@@ -1,8 +1,13 @@
 package service
 
+/**
+TODO Admin或者商户才有查询和编辑的功能吧。额这些好像都是admin或者商户才能进行的操作
+*/
+
 import (
 	"github.com/gin-gonic/gin"
 	constants "mall_backend/constant"
+	"mall_backend/dao"
 	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/response"
@@ -11,24 +16,21 @@ import (
 )
 
 // SkuCreate 创建Sku分类
+// sku验证，spec_key验证，value_id验证
 func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 	if !SpuExists(create.SpuID) {
 		response.Failure(c, "请选择正确的商品")
 		return
 	}
 
-	param := &model.MmSku{
-		SpuID:      int32(create.SpuID),
-		Name:       create.Name,
-		Desc:       create.Desc,
-		Status:     constants.NormalStatus,
-		CreateTime: time.Now(),
-		UpdateTime: util.MinDateTime(),
-		DeleteTime: util.MinDateTime(),
+	if !dao.SkuExists(create.SpuID) {
+		response.Failure(c, "请选择正确的商品规格")
+		return
 	}
-	tx := util.DBClient().Model(&model.MmSku{}).Create(&param)
-	if tx.Error != nil {
-		response.Failure(c, "创建失败")
+
+	// 使用事务包裹
+	if err := dao.SkuCreateTransaction(create); err != nil {
+		response.Failure(c, err.Error())
 		return
 	}
 
@@ -60,15 +62,14 @@ func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 		return
 	}
 
-	param := &model.MmSku{
-		Name:       update.Name,
-		Desc:       update.Desc,
-		UpdateTime: time.Now(),
+	if !dao.SkuExists(update.SpuID) {
+		response.Failure(c, "请选择正确的商品规格")
+		return
 	}
 
-	tx := util.DBClient().Model(&model.MmSku{}).Where("status = ?", constants.NormalStatus).Where("id = ?", update.Id).Updates(param)
-	if tx.Error != nil {
-		response.Failure(c, tx.Error.Error())
+	// 使用事务包裹
+	if err := dao.SkuUpdateTransaction(update); err != nil {
+		response.Failure(c, err.Error())
 		return
 	}
 
@@ -76,53 +77,19 @@ func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 	return
 }
 
-// SkuSearch 查询
+// SkuSearch TODO 这里是要设计查询
+//
+//		  商品
+//		 /   \
+//		sku1  sku2
+//
+//	 通过ID 来查询有哪些规格；编辑就需要点到具体的规格里面
 func SkuSearch(c *gin.Context, search *dto.SkuSearch) {
-	// id, name, page, limit
-	category := &[]dto.SkuSearchResponse{}
-
-	// 先写吧，优化等以后再来说
-
-	whereStr := "status = ?"
-	var param []interface{}
-	param = append(param, constants.NormalStatus)
-
-	if search.Id > 0 {
-		whereStr += " AND id = ?"
-		param = append(param, search.Id)
-	}
-
-	if len(search.Name) > 0 {
-		whereStr += " AND name LIKE ?"
-		param = append(param, "%"+search.Name+"%")
-	}
-
-	if search.SpuID > 0 {
-		whereStr += " AND spu_id = ?"
-		param = append(param, search.SpuID)
-	}
-
-	tx := util.DBClient().Model(&model.MmSku{}).Debug().
-		Offset((search.Page-1)*search.Limit).
-		Limit(search.Limit).
-		Where(whereStr, param...).
-		Preload("Specs").
-		Find(&category)
-	if tx.Error != nil {
-		response.Failure(c, tx.Error.Error())
+	res := &model.MmSku{}
+	if err := util.DBClient().Select("id", "title", "spu_id", "price", "stock").Where("status = ?", constants.NormalStatus).Where("spu_id = ?", search).First(res).Error; err != nil {
+		response.Failure(c, err.Error())
 		return
 	}
-
-	response.Success(c, category)
+	response.Success(c, res)
 	return
-}
-
-// SkuExists 通过ID查询该商品是否可用
-func SkuExists(spuID int) bool {
-	tx := util.DBClient().Model(&model.MmSku{}).
-		Select("id").
-		Where("status = ?", constants.NormalStatus).
-		Where("id = ?", spuID).
-		First(&model.MmCategory{})
-	return tx.RowsAffected != 0
 }

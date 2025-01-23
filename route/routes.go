@@ -5,7 +5,6 @@ import (
 	"mall_backend/api/v1/active/seckill"
 	coupon "mall_backend/api/v1/coupon"
 	"mall_backend/api/v1/sku"
-	spec "mall_backend/api/v1/spec"
 	"mall_backend/api/v1/spu"
 	"mall_backend/api/v1/user"
 	"mall_backend/middleware"
@@ -43,10 +42,10 @@ func Register(r *gin.Engine) {
 		// sku的操作
 
 		// spec的操作 // TODO 这个玩意儿应该是放在Admin下面的。或者说是商户下面
-		v1.POST("/spec/create", spec.CreateSpec)
-		v1.POST("/spec/delete", spec.DeleteSpec)
-		v1.POST("/spec/update", spec.UpdateSpec)
-		v1.POST("/spec/search", spec.SearchSpec)
+		//v1.POST("/spec/create", spec.CreateSpec)
+		//v1.POST("/spec/delete", spec.DeleteSpec)
+		//v1.POST("/spec/update", spec.UpdateSpec)
+		//v1.POST("/spec/search", spec.SearchSpec)
 		// spec的操作
 
 		// coupon的操作 // TODO 这个玩意儿应该是放在Admin下面的。或者说是商户下面

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
@@ -88,28 +87,28 @@ func SecKillDelete(activeId int) error {
 // 检查秒杀活动是否选择了正确是商品，规格，以及规格，规格价格，以及库存
 func secKillChecker(param *dto.SecKillInfo) error {
 	var err error
-	if !SpuExists(param.SpuId) {
-		err = errors.Join(err, errors.New("请选择正确的商品"))
-	}
-
-	if !SkuExists(param.SkuId) {
-		err = errors.Join(err, errors.New("请选择正确的规格"))
-	}
-
-	spec, errx := dao.SpecGetOneByIds([]int{param.SkuId})
-	if errx != nil || spec == nil || len(*spec) < 1 {
-		err = errors.Join(err, errx)
-	} else {
-		*spec = (*spec)[:1]
-
-		if int32((*spec)[0].Price) < int32(param.Price) {
-			err = errors.Join(err, errors.New("秒杀价格比原价高"))
-		}
-
-		if int32((*spec)[0].Strock) < int32(param.Stock) {
-			err = errors.Join(err, errors.New("库存不够"))
-		}
-	}
+	//if !SpuExists(param.SpuId) {
+	//	err = errors.Join(err, errors.New("请选择正确的商品"))
+	//}
+	//
+	//if !SkuExists(param.SkuId) {
+	//	err = errors.Join(err, errors.New("请选择正确的规格"))
+	//}
+	//
+	//spec, errx := dao.SpecGetOneByIds([]int{param.SkuId})
+	//if errx != nil || spec == nil || len(*spec) < 1 {
+	//	err = errors.Join(err, errx)
+	//} else {
+	//	*spec = (*spec)[:1]
+	//
+	//	if int32((*spec)[0].Price) < int32(param.Price) {
+	//		err = errors.Join(err, errors.New("秒杀价格比原价高"))
+	//	}
+	//
+	//	if int32((*spec)[0].Strock) < int32(param.Stock) {
+	//		err = errors.Join(err, errors.New("库存不够"))
+	//	}
+	//}
 
 	return err
 }

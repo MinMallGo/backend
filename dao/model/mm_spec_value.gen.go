@@ -13,8 +13,8 @@ const TableNameMmSpecValue = "mm_spec_value"
 // MmSpecValue  规格详细表- 保存规格的详细信息
 type MmSpecValue struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpecID     int32     `gorm:"column:spec_id;not null;comment:商品ID" json:"spec_id"` // 商品ID
-	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`       // 规格名称
+	KeyID      int32     `gorm:"column:key_id;not null;comment:商品ID" json:"key_id"` // 商品ID
+	Name       string    `gorm:"column:name;not null;comment:规格名称" json:"name"`     // 规格名称
 	Status     bool      `gorm:"column:status;not null;default:1" json:"status"`
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
