@@ -24,7 +24,7 @@ func SkuCreateTransaction(create *dto.SkuCreate) error {
 			Title:      title,
 			SpuID:      int32(create.SpuID),
 			Price:      int32(create.Price),
-			Strock:     int32(create.Stock),
+			Stock:      int32(create.Stock),
 			Spces:      string(specs),
 			Status:     constants.NormalStatus,
 			CreateTime: time.Now(),
@@ -58,7 +58,7 @@ func SkuUpdateTransaction(update *dto.SkuUpdate) error {
 			Title:      title,
 			SpuID:      int32(update.SpuID),
 			Price:      int32(update.Price),
-			Strock:     int32(update.Stock),
+			Stock:      int32(update.Stock),
 			Spces:      string(specs),
 			UpdateTime: time.Now(),
 		}

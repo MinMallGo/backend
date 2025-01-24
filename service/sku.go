@@ -86,7 +86,7 @@ func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 //	 通过ID 来查询有哪些规格；编辑就需要点到具体的规格里面
 func SkuSearch(c *gin.Context, search *dto.SkuSearch) {
 	res := &model.MmSku{}
-	if err := util.DBClient().Select("id", "title", "spu_id", "price", "stock").Where("status = ?", constants.NormalStatus).Where("spu_id = ?", search).First(res).Error; err != nil {
+	if err := util.DBClient().Model(&model.MmSku{}).Where("status = ?", constants.NormalStatus).Where("spu_id = ?", search.SpuID).First(res).Error; err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
