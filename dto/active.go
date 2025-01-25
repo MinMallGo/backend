@@ -25,8 +25,7 @@ type ActiveUpdate struct {
 type ActiveSearch struct {
 	Id int `json:"id" binding:"omitempty,gt=0"`
 	ActiveUpdateOrSearch
-	Page  int `json:"page" binding:"gt=0"`
-	Limit int `json:"limit"`
+	Paginate
 }
 
 type ActiveUpdateOrSearch struct {

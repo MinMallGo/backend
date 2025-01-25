@@ -21,8 +21,7 @@ type CouponUpdate struct {
 type CouponSearch struct {
 	Id int `json:"id" binding:"omitempty,gt=0"`
 	CouponUpdateOrSearch
-	Page  int `json:"page" binding:"gt=0"`
-	Limit int `json:"limit"`
+	Paginate
 }
 
 type CouponUpdateOrSearch struct {

@@ -151,8 +151,8 @@ func CouponSearch(c *gin.Context, search *dto.CouponSearch) {
 	}
 
 	tx := util.DBClient().Model(&model.MmCoupon{}).Debug().
-		Offset((search.Page-1)*search.Limit).
-		Limit(search.Limit).
+		Offset((search.Page-1)*search.Size).
+		Limit(search.Size).
 		Where(whereStr, param...).
 		Find(&category)
 	if tx.Error != nil {

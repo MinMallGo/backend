@@ -137,8 +137,8 @@ func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
 	}
 
 	tx := util.DBClient().Model(&model.MmSpu{}).Debug().
-		Offset((search.Page-1)*search.Limit).
-		Limit(search.Limit).
+		Offset((search.Page-1)*search.Size).
+		Limit(search.Size).
 		Where(whereStr, param...).
 		Preload("Category").
 		Find(&category)

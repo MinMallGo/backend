@@ -33,8 +33,7 @@ type SpuSearch struct {
 	BrandId    int    `json:"brand_id" binding:"omitempty,gt=0"`
 	CategoryId int    `json:"category_id" binding:"omitempty,gt=0"`
 	MerchantId int    `json:"merchant_id" binding:"omitempty,gt=0"`
-	Page       int    `json:"page" binding:"gt=0"`
-	Limit      int    `json:"limit"`
+	Paginate
 }
 
 // SpuSearchResponse 商品查询返回数据定义

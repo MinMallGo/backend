@@ -21,8 +21,7 @@ type CategoryUpdate struct {
 }
 
 type CategorySearch struct {
-	Id    int    `json:"id" binding:"omitempty,gt=0"`
-	Name  string `json:"name"`
-	Page  int    `json:"page" binding:"gt=0"`
-	Limit int    `json:"limit"`
+	Id   int    `json:"id" binding:"omitempty,gt=0"`
+	Name string `json:"name"`
+	Paginate
 }

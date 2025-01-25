@@ -97,13 +97,27 @@ func CategorySearch(c *gin.Context, search *dto.CategorySearch) {
 		param = append(param, "%"+search.Name+"%")
 	}
 
-	tx := util.DBClient().Model(&model.MmCategory{}).Offset((search.Page-1)*search.Limit).Limit(search.Limit).Where(whereStr, param...).Find(&category)
+	tx := util.DBClient().Model(&model.MmCategory{}).Offset((search.Page-1)*search.Size).Limit(search.Size).Where(whereStr, param...).Find(&category)
 	if tx.Error != nil {
 		response.Failure(c, tx.Error.Error())
 		return
 	}
 
-	response.Success(c, category)
+	var count int64
+	err := util.DBClient().Model(&model.MmCategory{}).Where(whereStr, param...).Count(&count).Error
+	if err != nil {
+		response.Failure(c, err.Error())
+		return
+	}
+
+	res := &dto.PaginateCount{
+		Data:  category,
+		Page:  search.Page,
+		Size:  search.Size,
+		Count: 1,
+	}
+
+	response.Success(c, res)
 	return
 }
 
