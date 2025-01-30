@@ -5,6 +5,8 @@ import (
 )
 
 func Register(r *gin.Engine) {
+	// 管理员注册
+	AdminRegister(r)
 	// 用户注册
 	UserRegister(r)
 	// spu 注册

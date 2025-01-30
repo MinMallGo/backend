@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+	// 开启控制台颜色
+	gin.ForceConsoleColor()
+
 	g := gin.Default()
 	// 记录日志
 	g.Use(gin.Logger())

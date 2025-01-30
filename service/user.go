@@ -15,7 +15,14 @@ import (
 // Login 用户登录只要账号密码
 func Login(c *gin.Context, login *dto.UserLogin) {
 	userRes := &model.MmUser{}
-	util.DBClient().First(&model.MmUser{}).Where("account = ?", login.Username).First(&userRes)
+	user := constants.NormalUser
+	if _, exists := c.Get("user"); exists {
+		user = constants.AdminUser
+	}
+
+	// TODO 通过type来判断是管理员登录还是普通用户登录
+	util.DBClient().First(&model.MmUser{}).Where("status = ?", constants.NormalStatus).
+		Where("account = ?", login.Username).Where("type = ?", user).First(&userRes)
 	// TODO 1分钟输错几次让他锁定几分钟
 	if util.EncryptPassword(login.Password+userRes.Salt) != userRes.Password {
 		response.Failure(c, "账号或密码错误")
@@ -40,6 +47,8 @@ func Login(c *gin.Context, login *dto.UserLogin) {
 		return
 	}
 	// 保存用户登录状态
+
+	// TODO 返回当前角色的路由和权限
 
 	resp := &dto.UserLoginResponse{
 		Token: token,
