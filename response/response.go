@@ -11,8 +11,10 @@ import (
 type RespType int
 
 const (
-	done RespType = 400200
-	fail RespType = 400400
+	done        RespType = 200
+	fail        RespType = 400
+	UserNoAuth  RespType = 401
+	AdminNoAuth RespType = 403
 )
 
 type Response struct {

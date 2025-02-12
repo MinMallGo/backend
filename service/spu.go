@@ -147,7 +147,21 @@ func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
 		return
 	}
 
-	response.Success(c, category)
+	var count int64
+	err := util.DBClient().Model(&model.MmSpu{}).Debug().Where(whereStr, param...).Count(&count).Error
+	if err != nil {
+		response.Failure(c, err.Error())
+		return
+	}
+
+	res := &dto.PaginateCount{
+		Data:  category,
+		Page:  search.Page,
+		Size:  search.Size,
+		Count: int(count),
+	}
+
+	response.Success(c, res)
 	return
 }
 

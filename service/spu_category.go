@@ -114,7 +114,7 @@ func CategorySearch(c *gin.Context, search *dto.CategorySearch) {
 		Data:  category,
 		Page:  search.Page,
 		Size:  search.Size,
-		Count: 1,
+		Count: int(count),
 	}
 
 	response.Success(c, res)

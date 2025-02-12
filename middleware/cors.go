@@ -8,7 +8,16 @@ func CORS() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers",
 			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, token")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+
+		// 处理 OPTIONS 请求
+		if c.Request.Method == "OPTIONS" {
+			c.JSON(200, gin.H{
+				"message": "OK",
+			})
+			return
+		}
+
 		c.Next()
 	}
 }
