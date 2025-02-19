@@ -14,7 +14,7 @@ func AuthVerify() gin.HandlerFunc {
 		login, err := util.CacheClient().Get(context.Background(), token).Result()
 		if len(login) < 2 || err != nil {
 			// 返回请登录的提示
-			response.Failure(c, "请登录后操作")
+			response.NeedLogin(c, "请登录后操作")
 			c.Abort() // 终止请求
 			return
 		} else {

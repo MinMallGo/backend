@@ -41,6 +41,14 @@ func Failure(c *gin.Context, message string) {
 	})
 }
 
+func NeedLogin(c *gin.Context, message string) {
+	c.JSON(http.StatusOK, Response{
+		Status:  int(UserNoAuth),
+		Message: message,
+		Data:    struct{}{},
+	})
+}
+
 func Error(c *gin.Context, err error) {
 	var errs validator.ValidationErrors
 	if errors.As(err, &errs) {
