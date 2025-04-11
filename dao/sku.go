@@ -85,3 +85,9 @@ func SkuExists(spuID int) bool {
 	return util.DBClient().Model(&model.MmSku{}).Select("id").Where("status = ?", constants.NormalStatus).
 		Where("id = ?", spuID).First(&model.MmCategory{}).RowsAffected != 0
 }
+
+// SkuExists2 返回true表示存在，false表示不存在
+func SkuExists2(spuIDS []int) bool {
+	return util.DBClient().Model(&model.MmSku{}).Select("id").Where("status = ?", constants.NormalStatus).
+		Where("id in ?", spuIDS).First(&model.MmCategory{}).RowsAffected != 0
+}

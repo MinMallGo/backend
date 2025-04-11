@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
@@ -72,7 +73,9 @@ func SecKillCreate(c *gin.Context, create *dto.SecKillCreate) {
 	response.Success(c, []string{})
 	return
 }
-func SecKillUpdate(c *gin.Context, update *dto.SecKillUpdate) {}
+func SecKillUpdate(c *gin.Context, update *dto.SecKillUpdate) {
+
+}
 
 // SecKillDelete 删除秒杀内容
 func SecKillDelete(activeId int) error {
@@ -87,13 +90,13 @@ func SecKillDelete(activeId int) error {
 // 检查秒杀活动是否选择了正确是商品，规格，以及规格，规格价格，以及库存
 func secKillChecker(param *dto.SecKillInfo) error {
 	var err error
-	//if !SpuExists(param.SpuId) {
-	//	err = errors.Join(err, errors.New("请选择正确的商品"))
-	//}
-	//
-	//if !SkuExists(param.SkuId) {
-	//	err = errors.Join(err, errors.New("请选择正确的规格"))
-	//}
+	if !SpuExists(param.SpuId) {
+		err = errors.Join(err, errors.New("请选择正确的商品"))
+	}
+
+	if !SkuExists(param.SkuId) {
+		err = errors.Join(err, errors.New("请选择正确的规格"))
+	}
 	//
 	//spec, errx := dao.SpecGetOneByIds([]int{param.SkuId})
 	//if errx != nil || spec == nil || len(*spec) < 1 {

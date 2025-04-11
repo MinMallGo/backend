@@ -13,7 +13,9 @@ func SpuRegister(r *gin.Engine) {
 		v1.POST("/spu/create", spu.CreateSpu)
 		v1.POST("/spu/delete", spu.DeleteSpu)
 		v1.POST("/spu/update", spu.UpdateSpu)
-		v1.POST("/spu/search", spu.SearchSpu)
-		// spu的操作
+
 	}
+	
+	r.Group("v1").POST("/spu/search", spu.SearchSpu)
+	// spu的操作
 }

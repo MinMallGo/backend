@@ -35,7 +35,7 @@ func SecKillCreate(create *dto.SecKillCreate) error {
 		param = append(param, create.SpecId)
 	}
 
-	errx := util.DBClient().Model(&model.MmSpec{}).Where(whereStr, param...).
+	errx := util.DBClient().Debug().Model(&model.MmSpec{}).Where(whereStr, param...).
 		Where("id = ?", create.SkuId).Find(res)
 	if errx.Error != nil {
 		return errx.Error

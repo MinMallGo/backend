@@ -17,14 +17,29 @@ import (
 
 // SkuCreate 创建Sku分类
 // sku验证，spec_key验证，value_id验证
+// 感觉有点繁琐啊，创建规格名字可以理解，但是为什么要创建了规格值才能传？
 func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 	if !SpuExists(create.SpuID) {
-		response.Failure(c, "请选择正确的商品")
+		response.Failure(c, "创建失败：请选择正确的商品")
 		return
 	}
 
-	if !dao.SkuExists(create.SpuID) {
-		response.Failure(c, "请选择正确的商品规格")
+	idx := make([]int, 0, len(create.Spec))
+	for _, specs := range create.Spec {
+		idx = append(idx, specs.KeyID)
+	}
+
+	if len(idx) == 0 || !dao.SpecKeyExists2(idx) {
+		response.Failure(c, "请选择正确的商品规格名")
+		return
+	}
+
+	ids := make([]int, 0, len(create.Spec))
+	for _, specs := range create.Spec {
+		ids = append(ids, specs.ValID)
+	}
+	if len(ids) == 0 || !dao.NewSpecValueDao().Exists(ids...) {
+		response.Failure(c, "创建失败：请选择正确的商品值")
 		return
 	}
 
@@ -58,12 +73,12 @@ func SkuDelete(c *gin.Context, delete *dto.SkuDelete) {
 // SkuUpdate 修改Sku的分类信息
 func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 	if !SpuExists(update.SpuID) {
-		response.Failure(c, "请选择正确的商品")
+		response.Failure(c, "修改失败：请选择正确的商品")
 		return
 	}
 
 	if !dao.SkuExists(update.SpuID) {
-		response.Failure(c, "请选择正确的商品规格")
+		response.Failure(c, "修改失败：请选择正确的商品规格")
 		return
 	}
 
@@ -92,4 +107,16 @@ func SkuSearch(c *gin.Context, search *dto.SkuSearch) {
 	}
 	response.Success(c, res)
 	return
+}
+
+func SkuExists(skuId int) bool {
+	err := util.DBClient().Model(&model.MmSku{}).
+		Debug().
+		Where("id = ?", skuId).
+		Where("status = ?", constants.NormalStatus).
+		First(&model.MmSku{})
+	if err.Error != nil {
+		return false
+	}
+	return true
 }

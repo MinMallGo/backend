@@ -18,10 +18,10 @@ func SpuCreate(c *gin.Context, create *dto.SpuCreate) {
 		return
 	}
 
-	if create.MerchantId != 0 && !MerchantExists(create.MerchantId) {
-		response.Failure(c, "请选择正确的商户")
-		return
-	}
+	//if create.MerchantId != 0 && !MerchantExists(create.MerchantId) {
+	//	response.Failure(c, "请选择正确的商户")
+	//	return
+	//}
 
 	images := ""
 	if len(create.Img) > 0 {
@@ -75,10 +75,10 @@ func SpuUpdate(c *gin.Context, update *dto.SpuUpdate) {
 		return
 	}
 
-	if update.CategoryId != 0 && !MerchantExists(update.MerchantId) {
-		response.Failure(c, "请选择正确的商户")
-		return
-	}
+	//if update.CategoryId != 0 && !MerchantExists(update.MerchantId) {
+	//	response.Failure(c, "请选择正确的商户")
+	//	return
+	//}
 
 	images := ""
 	if len(update.Img) > 0 {
@@ -141,6 +141,7 @@ func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
 		Limit(search.Size).
 		Where(whereStr, param...).
 		Preload("Category").
+		Preload("Sku").
 		Find(&category)
 	if tx.Error != nil {
 		response.Failure(c, tx.Error.Error())
@@ -167,10 +168,22 @@ func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
 
 // SpuExists 通过ID查询该商品是否可用
 func SpuExists(spuID int) bool {
+	return util.DBClient().Model(&model.MmSpu{}).
+		Debug().
+		Select("id").
+		Where("status = ?", constants.NormalStatus).
+		Where("id = ?", spuID).
+		First(&model.MmSpu{}).RowsAffected == 1
+}
+
+func SpuExists2(spuID []int) bool {
 	tx := util.DBClient().Model(&model.MmSpu{}).
 		Select("id").
 		Where("status = ?", constants.NormalStatus).
 		Where("id = ?", spuID).
-		First(&model.MmCategory{})
-	return tx.RowsAffected != 0
+		First(&model.MmSpu{})
+	if tx.Error != nil {
+		return false
+	}
+	return true
 }

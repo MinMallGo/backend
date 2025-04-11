@@ -8,12 +8,12 @@ import (
 )
 
 func SpecKeyCreate(c *gin.Context, create *dto.SpecKeyCreate) {
-	err := dao.SpecKeyCreate(create)
+	res, err := dao.NewSpecKeyDao().Create(create)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
-	response.Success(c, []string{})
+	response.Success(c, res)
 	return
 }
 

@@ -1,1 +1,1 @@
-F:\cxxzoom\everydayNormalGo2\bin\air -c .air.toml -- -h
+air -c .air.toml -- -h

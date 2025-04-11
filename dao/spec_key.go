@@ -2,8 +2,6 @@ package dao
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"gorm.io/gorm"
 	constants "mall_backend/constant"
 	"mall_backend/dao/model"
@@ -15,6 +13,58 @@ import (
 type SpecKey struct {
 	model.MmSpecKey
 	Value []model.MmSpecValue ` json:"value" gorm:"foreignKey:KeyID;references:ID"`
+}
+
+type SpecKeyDao struct {
+	db *gorm.DB
+	m  model.MmSpecKey
+}
+
+func NewSpecKeyDao() *SpecKeyDao {
+	return &SpecKeyDao{
+		db: util.DBClient(),
+		m:  model.MmSpecKey{},
+	}
+}
+
+func (d SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp, err error) {
+	// 先查询和判断这个名字是不是存在，存在就提示存在，不存在呢，就新增
+	exists := &model.MmSpecKey{}
+	result := d.db.Model(&model.MmSpecKey{}).Where("name = ?", create.Name).Find(exists)
+	if result.Error != nil {
+		return
+	}
+
+	tx := d.db.Begin()
+	var spuId int
+	if result.RowsAffected > 0 {
+		spuId = int(exists.ID)
+	} else {
+		param := &model.MmSpecKey{
+			Name:       create.Name,
+			Unit:       create.Uint,
+			Status:     constants.NormalStatus,
+			CreateTime: time.Now(),
+			UpdateTime: util.MinDateTime(),
+			DeleteTime: util.MinDateTime(),
+		}
+		if err = d.db.Model(&d.m).Create(param).Error; err != nil {
+			tx.Rollback()
+			return
+		}
+		spuId = int(param.ID)
+	}
+
+	values, err := NewSpecValueDao().Create(int(spuId), create.Value...)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+	tx.Commit()
+	res.Id = int(spuId)
+	res.Values = values
+
+	return
 }
 
 // GenSkuData 通过spec_key_id,spec_id 来查询和构造 sku.Title 以及sku.Specs
@@ -54,11 +104,7 @@ func SpecKeyCreate(create *dto.SpecKeyCreate) error {
 		return err
 	}
 
-	// 判断spec_key是否存在
-
-	if exists.ID != 0 {
-		return errors.New(fmt.Sprintf("要新增的名称已经存在：%s", create.Name))
-	}
+	// 存在跳过新增
 
 	param := &model.MmSpecKey{
 		Name:       create.Name,
@@ -130,4 +176,12 @@ func SpecKeySearch(search *dto.SpecKeySearch) (*dto.PaginateCount, error) {
 func SpecKeyExists(specId int) bool {
 	e := util.DBClient().Model(&model.MmSpecKey{}).Debug().Where("status = ?", constants.NormalStatus).Where("id = ?", specId).Find(&model.MmSpecKey{}).RowsAffected
 	return e == 1
+}
+
+// SpecKeyExists2 SpecKeyExists 判断全部是否存在
+func SpecKeyExists2(specId []int) bool {
+	return util.DBClient().Model(&model.MmSpecKey{}).
+		Debug().
+		Where("status = ?", constants.NormalStatus).
+		Where("id = ?", specId).Find(&model.MmSpecKey{}).RowsAffected == int64(len(specId))
 }

@@ -39,5 +39,6 @@ type SpuSearch struct {
 // SpuSearchResponse 商品查询返回数据定义
 type SpuSearchResponse struct {
 	model.MmSpu
-	Category *model.MmCategory `json:"category"`
+	Category *model.MmCategory `json:"category" gorm:"foreignkey:CategoryID;references:ID"`
+	Sku      []*model.MmSku    `json:"sku" gorm:"foreignKey:SpuID;references:ID"`
 }

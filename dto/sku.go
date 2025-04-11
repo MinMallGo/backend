@@ -6,8 +6,9 @@ package dto
 
 // Specs 创建Sku时的需要多个这种组合
 type Specs struct {
-	KeyID int `json:"key_id" binding:"required,gt=0"`
-	ValID int `json:"value_id" binding:"required,gt=0"`
+	KeyID int    `json:"key_id" binding:"required,gt=0"`
+	ValID int    `json:"value_id"`
+	Name  string `json:"name" binding:"required,min=1,max=255"`
 }
 
 type ReasonableValue struct {

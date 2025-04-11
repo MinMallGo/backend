@@ -2,10 +2,13 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	sloggin "github.com/samber/slog-gin"
 	"log"
+	"log/slog"
 	"mall_backend/middleware"
 	routes "mall_backend/route"
 	"mall_backend/util"
+	"os"
 )
 
 func main() {
@@ -13,12 +16,16 @@ func main() {
 	gin.ForceConsoleColor()
 
 	g := gin.Default()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	// 记录日志
 	g.Use(gin.Logger())
 	// 从错误中恢复
 	g.Use(gin.Recovery())
 	// 跨域中间件
 	g.Use(middleware.CORS())
+	// 注册日志记录中间件
+	g.Use(sloggin.New(logger))
 	// 路由注册
 	routes.Register(g)
 	// 启动前初始化
