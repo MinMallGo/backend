@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	sloggin "github.com/samber/slog-gin"
-	"log"
 	"log/slog"
 	"mall_backend/middleware"
 	routes "mall_backend/route"
@@ -43,7 +42,7 @@ func initNecessary() {
 	}
 
 	if _, err := util.RedisInstance(); err != nil {
-		log.Println(err)
+		panic(err)
 	}
 
 	// 注册自定义验证规则
