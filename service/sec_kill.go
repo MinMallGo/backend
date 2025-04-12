@@ -94,7 +94,7 @@ func secKillChecker(param *dto.SecKillInfo) error {
 		err = errors.Join(err, errors.New("请选择正确的商品"))
 	}
 
-	if !SkuExists(param.SkuId) {
+	if !dao.NewSkuDao().Exists(param.SkuId) {
 		err = errors.Join(err, errors.New("请选择正确的规格"))
 	}
 	//

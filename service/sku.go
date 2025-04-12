@@ -29,7 +29,7 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 		idx = append(idx, specs.KeyID)
 	}
 
-	if len(idx) == 0 || !dao.SpecKeyExists2(idx) {
+	if len(idx) == 0 || !dao.NewSpecKeyDao().Exists(idx) {
 		response.Failure(c, "请选择正确的商品规格名")
 		return
 	}
@@ -44,7 +44,7 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 	}
 
 	// 使用事务包裹
-	if err := dao.SkuCreateTransaction(create); err != nil {
+	if err := dao.NewSkuDao().Create(create); err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
@@ -77,13 +77,13 @@ func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 		return
 	}
 
-	if !dao.SkuExists(update.SpuID) {
+	if !dao.NewSkuDao().Exists(update.SpuID) {
 		response.Failure(c, "修改失败：请选择正确的商品规格")
 		return
 	}
 
 	// 使用事务包裹
-	if err := dao.SkuUpdateTransaction(update); err != nil {
+	if err := dao.NewSkuDao().Update(update); err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
@@ -107,16 +107,4 @@ func SkuSearch(c *gin.Context, search *dto.SkuSearch) {
 	}
 	response.Success(c, res)
 	return
-}
-
-func SkuExists(skuId int) bool {
-	err := util.DBClient().Model(&model.MmSku{}).
-		Debug().
-		Where("id = ?", skuId).
-		Where("status = ?", constants.NormalStatus).
-		First(&model.MmSku{})
-	if err.Error != nil {
-		return false
-	}
-	return true
 }

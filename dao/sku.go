@@ -10,10 +10,18 @@ import (
 	"time"
 )
 
-// SkuCreateTransaction 创建商品规格。使用事务保证一致性
-func SkuCreateTransaction(create *dto.SkuCreate) error {
-	return util.DBClient().Transaction(func(tx *gorm.DB) error {
-		title, specs, err := GenSkuData(&create.Spec)
+type SkuDao struct {
+	db *gorm.DB
+	m  model.MmSku
+}
+
+func NewSkuDao() *SkuDao {
+	return &SkuDao{db: util.DBClient(), m: model.MmSku{}}
+}
+
+func (d SkuDao) Create(create *dto.SkuCreate) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		title, specs, err := NewSpecKeyDao().GenSkuData(&create.Spec)
 		if err != nil {
 			return err
 		}
@@ -31,7 +39,7 @@ func SkuCreateTransaction(create *dto.SkuCreate) error {
 			UpdateTime: util.MinDateTime(),
 			DeleteTime: util.MinDateTime(),
 		}
-		err = util.DBClient().Model(&model.MmSku{}).Create(&param).Error
+		err = d.db.Model(&model.MmSku{}).Create(&param).Error
 		if err != nil {
 			return err
 		}
@@ -45,9 +53,9 @@ func SkuCreateTransaction(create *dto.SkuCreate) error {
 	})
 }
 
-func SkuUpdateTransaction(update *dto.SkuUpdate) error {
-	return util.DBClient().Transaction(func(tx *gorm.DB) error {
-		title, specs, err := GenSkuData(&update.Spec)
+func (d SkuDao) Update(update *dto.SkuUpdate) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		title, specs, err := NewSpecKeyDao().GenSkuData(&update.Spec)
 		if err != nil {
 			return err
 		}
@@ -63,7 +71,7 @@ func SkuUpdateTransaction(update *dto.SkuUpdate) error {
 			UpdateTime: time.Now(),
 		}
 		// 更新sku
-		err = util.DBClient().Model(&model.MmSku{}).Where("id = ?", update.Id).Updates(param).Error
+		err = d.db.Model(&model.MmSku{}).Where("id = ?", update.Id).Updates(param).Error
 		if err != nil {
 			log.Println("update sku with error:", err)
 			return err
@@ -80,14 +88,18 @@ func SkuUpdateTransaction(update *dto.SkuUpdate) error {
 	})
 }
 
-// SkuExists 通过ID查询该商品是否可用
-func SkuExists(spuID int) bool {
-	return util.DBClient().Model(&model.MmSku{}).Select("id").Where("status = ?", constants.NormalStatus).
-		Where("id = ?", spuID).First(&model.MmCategory{}).RowsAffected != 0
+func (d SkuDao) Exists(id ...int) bool {
+	return d.db.
+		Model(&model.MmSku{}).
+		Select("id").
+		Where("status = ?", constants.NormalStatus).
+		Where("id in ?", id).
+		First(&model.MmCategory{}).
+		RowsAffected == int64(len(id))
 }
 
-// SkuExists2 返回true表示存在，false表示不存在
-func SkuExists2(spuIDS []int) bool {
-	return util.DBClient().Model(&model.MmSku{}).Select("id").Where("status = ?", constants.NormalStatus).
-		Where("id in ?", spuIDS).First(&model.MmCategory{}).RowsAffected != 0
+func (d SkuDao) Delete(id ...int) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		return d.db.Model(&model.MmSku{}).Where("id in ?", id).Update("status", false).Error
+	})
 }

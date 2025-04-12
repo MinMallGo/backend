@@ -18,7 +18,7 @@ func SpecKeyCreate(c *gin.Context, create *dto.SpecKeyCreate) {
 }
 
 func SpecKeyDelete(c *gin.Context, delete *dto.SpecKeyDelete) {
-	err := dao.SpecKeyDelete(delete)
+	err := dao.NewSpecKeyDao().Delete(delete)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
@@ -28,7 +28,7 @@ func SpecKeyDelete(c *gin.Context, delete *dto.SpecKeyDelete) {
 }
 
 func SpecKeyUpdate(c *gin.Context, update *dto.SpecKeyUpdate) {
-	err := dao.SpecKeyUpdate(update)
+	err := dao.NewSpecKeyDao().Update(update)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
@@ -38,11 +38,11 @@ func SpecKeyUpdate(c *gin.Context, update *dto.SpecKeyUpdate) {
 }
 
 func SpecKeySearch(c *gin.Context, search *dto.SpecKeySearch) {
-	res, err := dao.SpecKeySearch(search)
+	res, err := dao.NewSpecKeyDao().More(search)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
-	response.Success(c, res)
+	response.PaginateSuccess(c, res)
 	return
 }

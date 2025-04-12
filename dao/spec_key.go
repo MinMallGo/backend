@@ -67,8 +67,74 @@ func (d SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp
 	return
 }
 
-// GenSkuData 通过spec_key_id,spec_id 来查询和构造 sku.Title 以及sku.Specs
-func GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
+func (d SpecKeyDao) Update(update *dto.SpecKeyUpdate) (err error) {
+	return d.db.Model(d.m).Where("id = ?", update.Id).Debug().Updates(map[string]interface{}{
+		"name":        update.Name,
+		"unit":        update.Uint,
+		"update_time": time.Now().Format("2006-01-02 15:04:05"),
+	}).Error
+}
+
+func (d SpecKeyDao) Delete(delete *dto.SpecKeyDelete) (err error) {
+	return d.db.Model(d.m).Where("id = ?", delete.Id).Debug().Updates(map[string]interface{}{
+		"status":      constants.BanStatus,
+		"delete_time": time.Now().Format("2006-01-02 15:04:05"),
+	}).Error
+}
+
+func (d SpecKeyDao) OneById(keyId int) (res *SpecKey, err error) {
+	err = d.db.Model(model.MmSpecKey{}).Where("id = ?", keyId).Debug().Preload("Value").Find(&res).Error
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (d SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) {
+	whereStr := "status = ?"
+	var params []interface{}
+	params = append(params, constants.NormalStatus)
+
+	if len(search.Name) > 0 {
+		whereStr += "AND name LIKE ?"
+		params = append(params, "%"+search.Name+"%")
+	}
+
+	if len(search.Uint) > 0 {
+		whereStr += "AND unit = ?"
+		params = append(params, search.Uint)
+	}
+
+	param := &[]SpecKey{}
+	err := d.db.Model(d.m).Debug().Offset((search.Page-1)*search.Size).Preload("Value").Limit(search.Size).Where(whereStr, params).Find(param).Error
+	if err != nil {
+		return nil, err
+	}
+	var count int64 = 0
+	err = d.db.Model(d.m).Debug().Where(whereStr, params).Count(&count).Error
+	if err != nil {
+		return nil, err
+	}
+	res := &dto.PaginateCount{
+		Data:  param,
+		Page:  search.Page,
+		Size:  search.Size,
+		Count: int(count),
+	}
+	return res, err
+}
+
+func (d SpecKeyDao) Exists(specId []int) bool {
+	return util.DBClient().
+		Model(&model.MmSpecKey{}).
+		Debug().
+		Where("status = ?", constants.NormalStatus).
+		Where("id = ?", specId).
+		Find(&model.MmSpecKey{}).
+		RowsAffected == int64(len(specId))
+}
+
+func (d SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
 	// 通过一条sql关联查询出来 spec_key => []spec_value然后进行筛选
 	// 先for range 获取出来所有的spec_key_id,然后获取所有的 for range res进行筛选
 	var keyIds, valueIds []int
@@ -78,7 +144,7 @@ func GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
 		valueIds = append(valueIds, spec.ValID)
 	}
 	res := &[]SpecKey{}
-	err = util.DBClient().Model(&model.MmSpecKey{}).Debug().Preload("Value", func(db *gorm.DB) *gorm.DB {
+	err = d.db.Model(&model.MmSpecKey{}).Debug().Preload("Value", func(db *gorm.DB) *gorm.DB {
 		return db.Find(&model.MmSpecValue{}, valueIds)
 	}).Find(res, keyIds).Error
 	if err != nil {
@@ -94,94 +160,4 @@ func GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
 
 	specs, err = json.Marshal(res)
 	return
-}
-
-func SpecKeyCreate(create *dto.SpecKeyCreate) error {
-	// 先查询和判断这个名字是不是存在，存在就提示存在，不存在呢，就新增
-	exists := &model.MmSpecKey{}
-	err := util.DBClient().Model(&model.MmSpecKey{}).Where("name = ?", create.Name).Find(exists).Error
-	if err != nil {
-		return err
-	}
-
-	// 存在跳过新增
-
-	param := &model.MmSpecKey{
-		Name:       create.Name,
-		Unit:       create.Uint,
-		Status:     constants.NormalStatus,
-		CreateTime: time.Now(),
-		UpdateTime: util.MinDateTime(),
-		DeleteTime: util.MinDateTime(),
-	}
-	err = util.DBClient().Model(&model.MmSpecKey{}).Create(param).Error
-	return err
-}
-
-func SpecKeyDelete(del *dto.SpecKeyDelete) error {
-	param := &model.MmSpecKey{
-		Status:     constants.BanStatus,
-		DeleteTime: time.Now(),
-	}
-
-	err := util.DBClient().Debug().Select("status", "delete_time").Model(&model.MmSpecKey{}).Where("id = ?", del.Id).Updates(param).Error
-	return err
-}
-
-func SpecKeyUpdate(update *dto.SpecKeyUpdate) error {
-	param := &model.MmSpecKey{
-		Name:       update.Name,
-		Unit:       update.Uint,
-		UpdateTime: time.Now(),
-	}
-	err := util.DBClient().Model(&model.MmSpecKey{}).Where("id = ?", update.Id).Updates(param).Error
-	return err
-}
-
-func SpecKeySearch(search *dto.SpecKeySearch) (*dto.PaginateCount, error) {
-	whereStr := "status = ?"
-	var params []interface{}
-	params = append(params, constants.NormalStatus)
-
-	if len(search.Name) > 0 {
-		whereStr += "AND name LIKE ?"
-		params = append(params, "%"+search.Name+"%")
-	}
-
-	if len(search.Uint) > 0 {
-		whereStr += "AND unit = ?"
-		params = append(params, search.Uint)
-	}
-
-	param := &[]model.MmSpecKey{}
-	err := util.DBClient().Model(&model.MmSpecKey{}).Debug().Offset((search.Page-1)*search.Size).Limit(search.Size).Where(whereStr, params).Find(param).Error
-	if err != nil {
-		return nil, err
-	}
-	var count int64 = 0
-	err = util.DBClient().Model(&model.MmSpecKey{}).Debug().Where(whereStr, params).Count(&count).Error
-	if err != nil {
-		return nil, err
-	}
-	res := &dto.PaginateCount{
-		Data:  param,
-		Page:  search.Page,
-		Size:  search.Size,
-		Count: int(count),
-	}
-	return res, err
-}
-
-// SpecKeyExists 判断是否存在
-func SpecKeyExists(specId int) bool {
-	e := util.DBClient().Model(&model.MmSpecKey{}).Debug().Where("status = ?", constants.NormalStatus).Where("id = ?", specId).Find(&model.MmSpecKey{}).RowsAffected
-	return e == 1
-}
-
-// SpecKeyExists2 SpecKeyExists 判断全部是否存在
-func SpecKeyExists2(specId []int) bool {
-	return util.DBClient().Model(&model.MmSpecKey{}).
-		Debug().
-		Where("status = ?", constants.NormalStatus).
-		Where("id = ?", specId).Find(&model.MmSpecKey{}).RowsAffected == int64(len(specId))
 }
