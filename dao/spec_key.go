@@ -124,14 +124,15 @@ func (d SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) 
 	return res, err
 }
 
-func (d SpecKeyDao) Exists(specId []int) bool {
-	return util.DBClient().
-		Model(&model.MmSpecKey{}).
+func (d SpecKeyDao) Exists(specId ...int) bool {
+	return d.db.
+		Model(&d.m).
 		Debug().
 		Where("status = ?", constants.NormalStatus).
-		Where("id = ?", specId).
-		Find(&model.MmSpecKey{}).
+		Where("id in ?", specId).
+		Find(&[]model.MmSpecKey{}).
 		RowsAffected == int64(len(specId))
+
 }
 
 func (d SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
@@ -145,8 +146,8 @@ func (d SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, e
 	}
 	res := &[]SpecKey{}
 	err = d.db.Model(&model.MmSpecKey{}).Debug().Preload("Value", func(db *gorm.DB) *gorm.DB {
-		return db.Find(&model.MmSpecValue{}, valueIds)
-	}).Find(res, keyIds).Error
+		return db.Select("id,key_id,name").Find(&model.MmSpecValue{}, valueIds)
+	}).Select("id,name,unit").Find(res, keyIds).Error
 	if err != nil {
 		return
 	}

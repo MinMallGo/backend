@@ -84,7 +84,7 @@ func (d SpecValueDao) Exists(id ...int) bool {
 	return util.DBClient().Model(&model.MmSpecValue{}).
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", id).
-		Find(&model.MmSpecValue{}).RowsAffected == int64(len(id))
+		Find(&[]model.MmSpecValue{}).RowsAffected == int64(len(id))
 }
 
 //

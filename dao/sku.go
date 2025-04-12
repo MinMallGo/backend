@@ -100,6 +100,34 @@ func (d SkuDao) Exists(id ...int) bool {
 
 func (d SkuDao) Delete(id ...int) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
-		return d.db.Model(&model.MmSku{}).Where("id in ?", id).Update("status", false).Error
+		err := d.db.Model(&d.m).Where("id in ?", id).Updates(map[string]interface{}{
+			"status":      constants.BanStatus,
+			"delete_time": time.Now().Format("2006-01-02 15:04:05"),
+		}).Error
+		if err != nil {
+			return err
+		}
+
+		err = d.db.Model(&model.MmSpec{}).Debug().Where("sku_id in ?", id).Updates(map[string]interface{}{
+			"status":      constants.BanStatus,
+			"delete_time": time.Now().Format("2006-01-02 15:04:05"),
+		}).Error
+		if err != nil {
+			return err
+		}
+		return nil
 	})
+}
+
+func (d SkuDao) OneById(id int) (*model.MmSku, error) {
+	res := &d.m
+	if err := d.db.Model(&d.m).Where("status = ?", constants.NormalStatus).Where("spu_id = ?").First(res).Error; err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (d SkuDao) More(search *dto.SkuSearch) (*dto.PaginateCount, error) {
+	// TODO
+	return nil, nil
 }
