@@ -21,4 +21,6 @@ func Register(r *gin.Engine) {
 	ActiveRegister(r)
 	// 注册优惠券路由
 	CouponRegister(r)
+	// 注册购物车
+	CartRegister(r)
 }

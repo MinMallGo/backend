@@ -12,14 +12,13 @@ import (
 	"mall_backend/dto"
 	"mall_backend/response"
 	"mall_backend/util"
-	"time"
 )
 
 // SkuCreate 创建Sku分类
 // sku验证，spec_key验证，value_id验证
 // 感觉有点繁琐啊，创建规格名字可以理解，但是为什么要创建了规格值才能传？
 func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
-	if !SpuExists(create.SpuID) {
+	if !dao.NewSpuDao().Exists(create.SpuID) {
 		response.Failure(c, "创建失败：请选择正确的商品")
 		return
 	}
@@ -29,8 +28,8 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 		idx = append(idx, specs.KeyID)
 	}
 
-	if len(idx) == 0 || !dao.NewSpecKeyDao().Exists(idx) {
-		response.Failure(c, "请选择正确的商品规格名")
+	if len(idx) == 0 || !dao.NewSpecKeyDao().Exists(idx...) {
+		response.Failure(c, "创建失败：请选择正确的商品规格名")
 		return
 	}
 
@@ -55,13 +54,8 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 
 // SkuDelete 删除Sku分类
 func SkuDelete(c *gin.Context, delete *dto.SkuDelete) {
-	update := &model.MmSku{
-		Status:     constants.BanStatus,
-		DeleteTime: time.Now(),
-	}
-
-	tx := util.DBClient().Model(&model.MmSku{}).Select("status", "delete_time").Where("id = ?", delete.Id).Updates(update)
-	if tx.Error != nil {
+	err := dao.NewSkuDao().Delete(delete.Id)
+	if err != nil {
 		response.Failure(c, "删除失败")
 		return
 	}
@@ -72,7 +66,7 @@ func SkuDelete(c *gin.Context, delete *dto.SkuDelete) {
 
 // SkuUpdate 修改Sku的分类信息
 func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
-	if !SpuExists(update.SpuID) {
+	if !dao.NewSpuDao().Exists(update.SpuID) {
 		response.Failure(c, "修改失败：请选择正确的商品")
 		return
 	}
@@ -100,6 +94,7 @@ func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
 //
 //	 通过ID 来查询有哪些规格；编辑就需要点到具体的规格里面
 func SkuSearch(c *gin.Context, search *dto.SkuSearch) {
+	//res, err := dao.NewSkuDao().More(search)
 	res := &model.MmSku{}
 	if err := util.DBClient().Model(&model.MmSku{}).Where("status = ?", constants.NormalStatus).Where("spu_id = ?", search.SpuID).First(res).Error; err != nil {
 		response.Failure(c, err.Error())
