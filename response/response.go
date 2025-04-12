@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"mall_backend/dto"
 	"mall_backend/util"
 	"net/http"
 )
@@ -23,12 +24,32 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 
+type PaginationResponse struct {
+	Status  int         `json:"status"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+	Page    int         `json:"page"`
+	Size    int         `json:"size"`
+	Count   int         `json:"count"`
+}
+
 // Success 成功
 func Success(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, Response{
 		Status:  int(done),
 		Message: "success",
 		Data:    data,
+	})
+}
+
+func PaginateSuccess(c *gin.Context, count *dto.PaginateCount) {
+	c.JSON(http.StatusOK, PaginationResponse{
+		Status:  int(done),
+		Message: "success",
+		Data:    count.Data,
+		Page:    count.Page,
+		Size:    count.Size,
+		Count:   count.Count,
 	})
 }
 
