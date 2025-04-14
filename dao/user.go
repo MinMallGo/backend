@@ -11,17 +11,15 @@ import (
 
 type UserDao struct {
 	db *gorm.DB
-	m  model.MmUser
 }
 
 func NewUserDao() *UserDao {
 	return &UserDao{
 		db: util.DBClient(),
-		m:  model.MmUser{},
 	}
 }
 
-func (u UserDao) CurrentUser(token string) (*model.MmUser, error) {
+func (u *UserDao) CurrentUser(token string) (*model.MmUser, error) {
 	jsonStr, err := util.CacheClient().Get(context.TODO(), token).Result()
 	if err != nil {
 		return nil, err
@@ -34,15 +32,15 @@ func (u UserDao) CurrentUser(token string) (*model.MmUser, error) {
 	return res, nil
 }
 
-func (u UserDao) Exists(id ...int) bool {
+func (u *UserDao) Exists(id ...int) bool {
 	res := &[]model.MmUser{}
-	return u.db.Model(u.m).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
+	return u.db.Model(&model.MmUser{}).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
 }
 
-func (u UserDao) Create(param *dto.CartCreate) {}
+func (u *UserDao) Create(param *dto.CartCreate) {}
 
-func (u UserDao) Update(param *dto.CartCreate) {}
+func (u *UserDao) Update(param *dto.CartCreate) {}
 
-func (u UserDao) Delete(param *dto.CartCreate) {}
+func (u *UserDao) Delete(param *dto.CartCreate) {}
 
-func (u UserDao) Search(param *dto.CartCreate) {}
+func (u *UserDao) Search(param *dto.CartCreate) {}

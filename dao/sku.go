@@ -12,14 +12,13 @@ import (
 
 type SkuDao struct {
 	db *gorm.DB
-	m  model.MmSku
 }
 
 func NewSkuDao() *SkuDao {
-	return &SkuDao{db: util.DBClient(), m: model.MmSku{}}
+	return &SkuDao{db: util.DBClient()}
 }
 
-func (d SkuDao) Create(create *dto.SkuCreate) error {
+func (d *SkuDao) Create(create *dto.SkuCreate) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
 		title, specs, err := NewSpecKeyDao().GenSkuData(&create.Spec)
 		if err != nil {
@@ -53,7 +52,7 @@ func (d SkuDao) Create(create *dto.SkuCreate) error {
 	})
 }
 
-func (d SkuDao) Update(update *dto.SkuUpdate) error {
+func (d *SkuDao) Update(update *dto.SkuUpdate) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
 		title, specs, err := NewSpecKeyDao().GenSkuData(&update.Spec)
 		if err != nil {
@@ -88,7 +87,7 @@ func (d SkuDao) Update(update *dto.SkuUpdate) error {
 	})
 }
 
-func (d SkuDao) Exists(id ...int) bool {
+func (d *SkuDao) Exists(id ...int) bool {
 	return d.db.
 		Model(&model.MmSku{}).
 		Select("id").
@@ -98,9 +97,9 @@ func (d SkuDao) Exists(id ...int) bool {
 		RowsAffected == int64(len(id))
 }
 
-func (d SkuDao) Delete(id ...int) error {
+func (d *SkuDao) Delete(id ...int) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
-		err := d.db.Model(&d.m).Where("id in ?", id).Updates(map[string]interface{}{
+		err := d.db.Model(&model.MmSku{}).Where("id in ?", id).Updates(map[string]interface{}{
 			"status":      constants.BanStatus,
 			"delete_time": time.Now().Format("2006-01-02 15:04:05"),
 		}).Error
@@ -119,15 +118,15 @@ func (d SkuDao) Delete(id ...int) error {
 	})
 }
 
-func (d SkuDao) OneById(id int) (*model.MmSku, error) {
-	res := &d.m
-	if err := d.db.Model(&d.m).Where("status = ?", constants.NormalStatus).Where("spu_id = ?").First(res).Error; err != nil {
+func (d *SkuDao) OneById(id int) (*model.MmSku, error) {
+	res := &model.MmSku{}
+	if err := d.db.Model(&model.MmSku{}).Where("status = ?", constants.NormalStatus).Where("spu_id = ?").First(res).Error; err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func (d SkuDao) More(search *dto.SkuSearch) (*dto.PaginateCount, error) {
+func (d *SkuDao) More(search *dto.SkuSearch) (*dto.PaginateCount, error) {
 	// TODO
 	return nil, nil
 }

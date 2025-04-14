@@ -17,17 +17,15 @@ type SpecKey struct {
 
 type SpecKeyDao struct {
 	db *gorm.DB
-	m  model.MmSpecKey
 }
 
 func NewSpecKeyDao() *SpecKeyDao {
 	return &SpecKeyDao{
 		db: util.DBClient(),
-		m:  model.MmSpecKey{},
 	}
 }
 
-func (d SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp, err error) {
+func (d *SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp, err error) {
 	// 先查询和判断这个名字是不是存在，存在就提示存在，不存在呢，就新增
 	exists := &model.MmSpecKey{}
 	result := d.db.Model(&model.MmSpecKey{}).Where("name = ?", create.Name).Find(exists)
@@ -48,7 +46,7 @@ func (d SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp
 			UpdateTime: util.MinDateTime(),
 			DeleteTime: util.MinDateTime(),
 		}
-		if err = d.db.Model(&d.m).Create(param).Error; err != nil {
+		if err = d.db.Model(&model.MmSpecKey{}).Create(param).Error; err != nil {
 			tx.Rollback()
 			return
 		}
@@ -67,22 +65,22 @@ func (d SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateResp
 	return
 }
 
-func (d SpecKeyDao) Update(update *dto.SpecKeyUpdate) (err error) {
-	return d.db.Model(d.m).Where("id = ?", update.Id).Debug().Updates(map[string]interface{}{
+func (d *SpecKeyDao) Update(update *dto.SpecKeyUpdate) (err error) {
+	return d.db.Model(&model.MmSpecKey{}).Where("id = ?", update.Id).Debug().Updates(map[string]interface{}{
 		"name":        update.Name,
 		"unit":        update.Uint,
 		"update_time": time.Now().Format("2006-01-02 15:04:05"),
 	}).Error
 }
 
-func (d SpecKeyDao) Delete(delete *dto.SpecKeyDelete) (err error) {
-	return d.db.Model(d.m).Where("id = ?", delete.Id).Debug().Updates(map[string]interface{}{
+func (d *SpecKeyDao) Delete(delete *dto.SpecKeyDelete) (err error) {
+	return d.db.Model(&model.MmSpecKey{}).Where("id = ?", delete.Id).Debug().Updates(map[string]interface{}{
 		"status":      constants.BanStatus,
 		"delete_time": time.Now().Format("2006-01-02 15:04:05"),
 	}).Error
 }
 
-func (d SpecKeyDao) OneById(keyId int) (res *SpecKey, err error) {
+func (d *SpecKeyDao) OneById(keyId int) (res *SpecKey, err error) {
 	err = d.db.Model(model.MmSpecKey{}).Where("id = ?", keyId).Debug().Preload("Value").Find(&res).Error
 	if err != nil {
 		return nil, err
@@ -90,7 +88,7 @@ func (d SpecKeyDao) OneById(keyId int) (res *SpecKey, err error) {
 	return res, nil
 }
 
-func (d SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) {
+func (d *SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) {
 	whereStr := "status = ?"
 	var params []interface{}
 	params = append(params, constants.NormalStatus)
@@ -106,12 +104,12 @@ func (d SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) 
 	}
 
 	param := &[]SpecKey{}
-	err := d.db.Model(d.m).Debug().Offset((search.Page-1)*search.Size).Preload("Value").Limit(search.Size).Where(whereStr, params).Find(param).Error
+	err := d.db.Model(&model.MmSpecKey{}).Debug().Offset((search.Page-1)*search.Size).Preload("Value").Limit(search.Size).Where(whereStr, params).Find(param).Error
 	if err != nil {
 		return nil, err
 	}
 	var count int64 = 0
-	err = d.db.Model(d.m).Debug().Where(whereStr, params).Count(&count).Error
+	err = d.db.Model(&model.MmSpecKey{}).Debug().Where(whereStr, params).Count(&count).Error
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +122,9 @@ func (d SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error) 
 	return res, err
 }
 
-func (d SpecKeyDao) Exists(specId ...int) bool {
+func (d *SpecKeyDao) Exists(specId ...int) bool {
 	return d.db.
-		Model(&d.m).
+		Model(&model.MmSpecKey{}).
 		Debug().
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", specId).
@@ -135,7 +133,7 @@ func (d SpecKeyDao) Exists(specId ...int) bool {
 
 }
 
-func (d SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
+func (d *SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, err error) {
 	// 通过一条sql关联查询出来 spec_key => []spec_value然后进行筛选
 	// 先for range 获取出来所有的spec_key_id,然后获取所有的 for range res进行筛选
 	var keyIds, valueIds []int

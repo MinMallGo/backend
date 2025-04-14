@@ -3,24 +3,21 @@ package dao
 import (
 	"errors"
 	"gorm.io/gorm"
-	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/util"
 )
 
 type OrderDao struct {
 	db *gorm.DB
-	m  model.MmOrder
 }
 
 func NewOrderDao() *OrderDao {
 	return &OrderDao{
 		db: util.DBClient(),
-		m:  model.MmOrder{},
 	}
 }
 
-func (u OrderDao) Create(create dto.OrderCreate, userId int) error {
+func (u *OrderDao) Create(create dto.OrderCreate, userId int) error {
 	// 1. 事务启动
 	// 2. 检查商品，检查规格
 	// 3. 地址检查

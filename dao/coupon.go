@@ -26,17 +26,15 @@ const (
 
 type CouponDao struct {
 	db *gorm.DB
-	m  model.MmCoupon
 }
 
 func NewCouponDao() *CouponDao {
 	return &CouponDao{
 		db: util.DBClient(),
-		m:  model.MmCoupon{},
 	}
 }
 
-func (c CouponDao) Create(create *dto.CouponCreate) error {
+func (c *CouponDao) Create(create *dto.CouponCreate) error {
 	param := &model.MmCoupon{
 		Name:             create.Name,
 		DiscountType:     int32(create.DiscountType),
@@ -58,20 +56,20 @@ func (c CouponDao) Create(create *dto.CouponCreate) error {
 		UpdateTime:       util.MinDateTime(),
 		DeleteTime:       util.MinDateTime(),
 	}
-	if tx := c.db.Model(c.m).Create(param); tx.Error != nil {
+	if tx := c.db.Model(&model.MmCoupon{}).Create(param); tx.Error != nil {
 		return tx.Error
 	}
 	return nil
 }
 
-func (c CouponDao) Delete(delete *dto.CouponDelete) error {
+func (c *CouponDao) Delete(delete *dto.CouponDelete) error {
 	// TODO 删除的时候检查是否是自己的。不能乱删
 	// TODO 这里需要更新用户 user_coupon
-	return c.db.Model(c.m).Where("id = ?", delete.Id).Update("status", false).Error
+	return c.db.Model(&model.MmCoupon{}).Where("id = ?", delete.Id).Update("status", false).Error
 }
 
-func (c CouponDao) Update(update *dto.CouponUpdate) error {
-	return c.db.Model(c.m).Where("id = ?", update.ID).Updates(map[string]interface{}{
+func (c *CouponDao) Update(update *dto.CouponUpdate) error {
+	return c.db.Model(&model.MmCoupon{}).Where("id = ?", update.ID).Updates(map[string]interface{}{
 		"name":               update.Name,
 		"discount_type":      update.DiscountType,
 		"use_range":          update.UseRange,
@@ -87,7 +85,7 @@ func (c CouponDao) Update(update *dto.CouponUpdate) error {
 	}).Error
 }
 
-func (c CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) {
+func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) {
 	data := &[]model.MmCoupon{}
 
 	// 先写吧，优化等以后再来说
@@ -106,26 +104,26 @@ func (c CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) {
 	}
 
 	if !search.ReceiveStartTime.IsZero() {
-		whereStr += " AND receive_start_time > ?"
+		whereStr += " AND receive_start_time >= ?"
 		param = append(param, search.ReceiveStartTime)
 	}
 
 	if !search.ReceiveEndTime.IsZero() {
-		whereStr += " AND receive_end_time > ?"
-		param = append(param, search.ReceiveStartTime)
+		whereStr += " AND receive_end_time <= ?"
+		param = append(param, search.ReceiveEndTime)
 	}
 
 	if !search.UseStartTime.IsZero() {
-		whereStr += " AND use_start_time > ?"
-		param = append(param, search.ReceiveStartTime)
+		whereStr += " AND use_start_time >= ?"
+		param = append(param, search.UseStartTime)
 	}
 
 	if !search.UseEndTime.IsZero() {
-		whereStr += " AND use_end_time > ?"
-		param = append(param, search.ReceiveStartTime)
+		whereStr += " AND use_end_time <= ?"
+		param = append(param, search.UseEndTime)
 	}
 
-	tx := c.db.Model(c.m).Debug().
+	tx := c.db.Model(&model.MmCoupon{}).Debug().
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -135,7 +133,7 @@ func (c CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) {
 	}
 
 	var count int64
-	tx = c.db.Model(c.m).
+	tx = c.db.Model(&model.MmCoupon{}).
 		Debug().
 		Where(whereStr, param...).
 		Count(&count)

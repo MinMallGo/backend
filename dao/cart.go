@@ -12,17 +12,15 @@ import (
 
 type CartDao struct {
 	db *gorm.DB
-	m  model.MmCart
 }
 
 func NewCartDao() *CartDao {
 	return &CartDao{
 		db: util.DBClient(),
-		m:  model.MmCart{},
 	}
 }
 
-func (d CartDao) Create(create *dto.CartCreate, userId int) error {
+func (d *CartDao) Create(create *dto.CartCreate, userId int) error {
 	// 判断用户是否存在
 	// TODO 这里就先不写了吧
 	// 判断spu，sku是否存在
@@ -37,9 +35,9 @@ func (d CartDao) Create(create *dto.CartCreate, userId int) error {
 
 	tx := d.db.Begin()
 	ex := &model.MmCart{}
-	if res := d.db.Model(d.m).Where("user_id = ? and spu_id = ? and sku_id = ? and status = ?", userId, create.SpuId, create.SkuId, constants.NormalStatus).Find(ex); res.Error == nil && res.RowsAffected == 1 {
+	if res := d.db.Model(&model.MmCart{}).Where("user_id = ? and spu_id = ? and sku_id = ? and status = ?", userId, create.SpuId, create.SkuId, constants.NormalStatus).Find(ex); res.Error == nil && res.RowsAffected == 1 {
 		// 添加数量
-		res := d.db.Model(d.m).Where("user_id = ? and spu_id = ? and sku_id = ? and status = ?", userId, create.SpuId, create.SkuId, constants.NormalStatus).Update("nums", int(ex.Nums)+create.Num)
+		res := d.db.Model(&model.MmCart{}).Where("user_id = ? and spu_id = ? and sku_id = ? and status = ?", userId, create.SpuId, create.SkuId, constants.NormalStatus).Update("nums", int(ex.Nums)+create.Num)
 		if res.Error != nil {
 			tx.Rollback()
 			return res.Error
@@ -66,7 +64,7 @@ func (d CartDao) Create(create *dto.CartCreate, userId int) error {
 	return nil
 }
 
-func (d CartDao) Update(update *dto.CartUpdate, userId int) error {
+func (d *CartDao) Update(update *dto.CartUpdate, userId int) error {
 	if !NewSpuDao().Exists(update.SpuId) {
 		return errors.New("添加到购物车失败：商品不存在")
 	}
@@ -75,7 +73,8 @@ func (d CartDao) Update(update *dto.CartUpdate, userId int) error {
 		return errors.New("更新购物车失败：规格不存在")
 	}
 
-	if err := d.db.Model(d.m).
+	if err := d.db.
+		Model(&model.MmCart{}).
 		Where("id = ? and user_id  = ? and spu_id = ?", update.Id, userId, update.SpuId).
 		Updates(model.MmCart{
 			SkuID: int32(update.SkuId),
@@ -87,8 +86,8 @@ func (d CartDao) Update(update *dto.CartUpdate, userId int) error {
 	return nil
 }
 
-func (d CartDao) Delete(delete *dto.CartDelete, userId int) error {
-	if err := d.db.Model(d.m).
+func (d *CartDao) Delete(delete *dto.CartDelete, userId int) error {
+	if err := d.db.Model(&model.MmCart{}).
 		Where("id IN ? and user_id = ?", delete.Id, userId).
 		Updates(map[string]interface{}{
 			"status":      constants.BanStatus,
@@ -105,11 +104,11 @@ type searchMore struct {
 	Sku model.MmSku `json:"sku" gorm:"foreignKey:SkuID;references:ID"`
 }
 
-func (d CartDao) Search(search *dto.CartSearch, userId int) (*dto.PaginateCount, error) {
+func (d *CartDao) Search(search *dto.CartSearch, userId int) (*dto.PaginateCount, error) {
 	// 关联查询spu，sku
 	result := &dto.PaginateCount{}
 	res := &[]searchMore{}
-	fd := d.db.Model(d.m).
+	fd := d.db.Model(&model.MmCart{}).
 		Preload("Sku").
 		Preload("Spu").
 		Where("user_id = ?", userId).
@@ -121,7 +120,7 @@ func (d CartDao) Search(search *dto.CartSearch, userId int) (*dto.PaginateCount,
 	}
 
 	var count int64
-	d.db.Model(d.m).Where("user_id = ?", userId).Count(&count)
+	d.db.Model(&model.MmCart{}).Where("user_id = ?", userId).Count(&count)
 
 	result.Data = res
 	result.Page = search.Page

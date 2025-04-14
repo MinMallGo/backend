@@ -12,22 +12,20 @@ import (
 
 type SpuDao struct {
 	db *gorm.DB
-	m  model.MmSpu
 }
 
 func NewSpuDao() *SpuDao {
 	return &SpuDao{
 		db: util.DBClient(),
-		m:  model.MmSpu{},
 	}
 }
 
-func (u SpuDao) Exists(id ...int) bool {
+func (u *SpuDao) Exists(id ...int) bool {
 	res := &[]model.MmSpu{}
-	return u.db.Model(u.m).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
+	return u.db.Model(&model.MmSpu{}).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
 }
 
-func (u SpuDao) Create(create *dto.SpuCreate) error {
+func (u *SpuDao) Create(create *dto.SpuCreate) error {
 	images := ""
 	if len(create.Img) > 0 {
 		images += strings.Join(create.Img, ",")
@@ -46,10 +44,10 @@ func (u SpuDao) Create(create *dto.SpuCreate) error {
 		UpdateTime: util.MinDateTime(),
 		DeleteTime: util.MinDateTime(),
 	}
-	return u.db.Model(&u.m).Create(&param).Error
+	return u.db.Model(&model.MmSpu{}).Create(&param).Error
 }
 
-func (u SpuDao) Update(update *dto.SpuUpdate) error {
+func (u *SpuDao) Update(update *dto.SpuUpdate) error {
 	images := ""
 	if len(update.Img) > 0 {
 		images += strings.Join(update.Img, ",")
@@ -65,20 +63,20 @@ func (u SpuDao) Update(update *dto.SpuUpdate) error {
 		UpdateTime: time.Now(),
 	}
 
-	return u.db.Model(u.m).Where("status = ?", constants.NormalStatus).Where("id = ?", update.Id).Updates(param).Error
+	return u.db.Model(&model.MmSpu{}).Where("status = ?", constants.NormalStatus).Where("id = ?", update.Id).Updates(param).Error
 
 }
 
-func (u SpuDao) Delete(delete *dto.SpuDelete) error {
+func (u *SpuDao) Delete(delete *dto.SpuDelete) error {
 	update := &model.MmSpu{
 		Status:     constants.BanStatus,
 		DeleteTime: time.Now(),
 	}
 
-	return u.db.Model(u.m).Select("status", "delete_time").Where("id = ?", delete.Id).Updates(update).Error
+	return u.db.Model(&model.MmSpu{}).Select("status", "delete_time").Where("id = ?", delete.Id).Updates(update).Error
 }
 
-func (u SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
+func (u *SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
 	// id, name, page, limit
 	result := &dto.PaginateCount{}
 	category := &[]dto.SpuSearchResponse{}
@@ -109,7 +107,7 @@ func (u SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
 		param = append(param, search.CategoryId)
 	}
 
-	tx := u.db.Model(u.m).Debug().
+	tx := u.db.Model(&model.MmSpu{}).Debug().
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -121,7 +119,7 @@ func (u SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
 	}
 
 	var count int64
-	err := u.db.Model(u.m).Debug().Where(whereStr, param...).Count(&count).Error
+	err := u.db.Model(&model.MmSpu{}).Debug().Where(whereStr, param...).Count(&count).Error
 	if err != nil {
 		return result, err
 	}

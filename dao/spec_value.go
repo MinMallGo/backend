@@ -11,23 +11,21 @@ import (
 
 type SpecValueDao struct {
 	db *gorm.DB
-	m  model.MmSpecValue
 }
 
 func NewSpecValueDao() *SpecValueDao {
 	return &SpecValueDao{
 		db: util.DBClient(),
-		m:  model.MmSpecValue{},
 	}
 }
 
 // Create 这里创建需要等待到获取spu的id然后循环创建
-func (d SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreateRespValue, error) {
+func (d *SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreateRespValue, error) {
 	// 先查询有无，有就直接拿到id，无则创建拿到id
 	result := make([]dto.SpecKeyCreateRespValue, 0, len(create))
 	for _, name := range create {
 		tmp := model.MmSpecValue{}
-		if d.db.Model(d.m).Where("name = ?", name).Select("id").Find(&tmp).RowsAffected != 0 {
+		if d.db.Model(&model.MmSpecValue{}).Where("name = ?", name).Select("id").Find(&tmp).RowsAffected != 0 {
 			// 获取到id
 			result = append(result, dto.SpecKeyCreateRespValue{
 				Name: name,
@@ -54,7 +52,7 @@ func (d SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreateR
 	return result, nil
 }
 
-//	func (d SpecValueDao) Update(update *dto.SpecValueUpdate) error {
+//	func (d *SpecValueDao) Update(update *dto.SpecValueUpdate) error {
 //		param := &model.MmSpecValue{
 //			Name:       update.Name,
 //			KeyID:      int32(update.SpecKeyId),
@@ -64,7 +62,7 @@ func (d SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreateR
 //		return err
 //	}
 //
-//	func (d SpecValueDao) Delete(del *dto.SpecValueDelete) error {
+//	func (d *SpecValueDao) Delete(del *dto.SpecValueDelete) error {
 //		param := &model.MmSpecValue{
 //			Status:     constants.BanStatus,
 //			DeleteTime: time.Now(),
@@ -73,14 +71,14 @@ func (d SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreateR
 //		return util.DBClient().Debug().Select("status", "delete_time").Model(&model.MmSpecValue{}).Where("id = ?", del.Id).Updates(param).Error
 //	}
 //
-// func (d SpecValueDao) Get() {
+// func (d *SpecValueDao) Get() {
 //
 // }
 //
-// func (d SpecValueDao) Gets(id ...int) {
+// func (d *SpecValueDao) Gets(id ...int) {
 //
 // }
-func (d SpecValueDao) Exists(id ...int) bool {
+func (d *SpecValueDao) Exists(id ...int) bool {
 	return util.DBClient().Model(&model.MmSpecValue{}).
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", id).
@@ -88,7 +86,7 @@ func (d SpecValueDao) Exists(id ...int) bool {
 }
 
 //
-//func (d SpecValueDao) Paginate(search *dto.SpecValueSearch) (*dto.PaginateCount, error) {
+//func (d *SpecValueDao) Paginate(search *dto.SpecValueSearch) (*dto.PaginateCount, error) {
 //	whereStr := "status = ?"
 //	var params []interface{}
 //	params = append(params, constants.NormalStatus)
