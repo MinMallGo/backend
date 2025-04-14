@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"mall_backend/dto"
 	"mall_backend/response"
-	"mall_backend/service"
+	"mall_backend/service/coupon"
 )
 
 func CreateCoupon(c *gin.Context) {
@@ -13,7 +13,7 @@ func CreateCoupon(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.CouponCreate(c, create)
+	coupon.Create(c, create)
 }
 
 func UpdateCoupon(c *gin.Context) {
@@ -22,7 +22,7 @@ func UpdateCoupon(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.CouponUpdate(c, update)
+	coupon.Update(c, update)
 }
 
 func SearchCoupon(c *gin.Context) {
@@ -31,7 +31,7 @@ func SearchCoupon(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.CouponSearch(c, search)
+	coupon.Search(c, search)
 }
 
 func DeleteCoupon(c *gin.Context) {
@@ -40,5 +40,5 @@ func DeleteCoupon(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.CouponDelete(c, del)
+	coupon.Delete(c, del)
 }
