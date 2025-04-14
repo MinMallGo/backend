@@ -151,6 +151,40 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 	return res, nil
 }
 
+func (c *CouponDao) ExistsWithUser(userId int, ids ...int) bool {
+	// 检查优惠券是否可用
+	coupons := &model.MmCoupon{}
+	res := c.db.Model(&model.MmCoupon{}).
+		Where("status", true).
+		Where("id in ?", ids).
+		Where("total_count > use_count"). // 没有使用完才能用
+		Find(coupons)
+	if res.Error != nil || res.RowsAffected < int64(len(ids)) {
+		return false
+	}
+
+	// 检查用户优惠券
+	var count int64
+	res = c.db.Model(&model.MmCoupon{}).
+		Where("id in ?", ids).
+		Where("user_id = ?", userId).
+		Where("is_used = ?", false).
+		Where("status = ?", 1).
+		Count(&count)
+	if res.Error != nil || (count) < int64(len(ids)) {
+		return false
+	}
+	return true
+}
+
+func (c *CouponDao) More(ids ...int) (res *[]model.MmCoupon, err error) {
+	err = c.db.Model(&model.MmCoupon{}).Debug().Where("id in ?", ids).Where("status = ?", true).Find(&res).Error
+	if err != nil {
+		return
+	}
+	return
+}
+
 func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 	res := &[]model.MmCoupon{}
 	err := util.DBClient().Model(&model.MmCoupon{}).Debug().Where("status = ?", constants.NormalStatus).Find(res, ids)
@@ -159,10 +193,4 @@ func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 	}
 
 	return res, nil
-}
-
-// CouponCreate 创建
-func CouponCreate(create *dto.CouponCreate) error {
-
-	return nil
 }

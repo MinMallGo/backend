@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"log"
 	constants "mall_backend/constant"
@@ -129,4 +130,48 @@ func (d *SkuDao) OneById(id int) (*model.MmSku, error) {
 func (d *SkuDao) More(search *dto.SkuSearch) (*dto.PaginateCount, error) {
 	// TODO
 	return nil, nil
+}
+
+func (d *SkuDao) MoreWithOrder(items *[]dto.ShoppingItem) (*[]model.MmSku, error) {
+	res := &[]model.MmSku{}
+	skuIds := make([]int, 0, len(*items))
+	for _, item := range *items {
+		skuIds = append(skuIds, item.SkuID)
+	}
+
+	tx := d.db.Model(&model.MmSku{}).Where("id in ?", skuIds).Where("status = ?", true).Find(&res)
+	if tx.Error != nil {
+		return res, tx.Error
+	}
+
+	return res, nil
+}
+
+// TODO 加库存减库存这里需要优化，不过以后再说
+// TODO 改造成一个sql。用case when then
+
+func (d *SkuDao) DecreaseStock(items *[]dto.ShoppingItem) bool {
+	for _, item := range *items {
+		tx := d.db.Model(&model.MmSku{}).
+			Where("id = ?", item.SkuID).
+			Where("status = ?", true).
+			Update("stock", fmt.Sprintf("stock - %d", item.Num))
+		if tx.Error != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (d *SkuDao) IncreaseStock(items *[]dto.ShoppingItem) bool {
+	for _, item := range *items {
+		tx := d.db.Model(&model.MmSku{}).
+			Where("id = ?", item.SkuID).
+			Where("status = ?", true).
+			Update("stock", fmt.Sprintf("stock + %d", item.Num))
+		if tx.Error != nil {
+			return false
+		}
+	}
+	return true
 }
