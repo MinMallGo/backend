@@ -23,3 +23,8 @@ type UpdateOrder struct {
 	OrderID   string `json:"order_id" binding:"required"`
 	AddressId string `json:"address_id" binding:"required"`
 }
+
+type PayOrder struct {
+	ID        int    `json:"id" binding:"required"`
+	OrderCode string `json:"order_code" binding:"required"`
+}

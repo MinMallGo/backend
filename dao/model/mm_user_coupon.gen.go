@@ -16,10 +16,10 @@ type MmUserCoupon struct {
 	UserID     int32     `gorm:"column:user_id;not null" json:"user_id"`
 	CouponID   int32     `gorm:"column:coupon_id;not null" json:"coupon_id"`
 	IsUsed     int32     `gorm:"column:is_used;not null" json:"is_used"`
-	Status     bool      `gorm:"column:status;not null;default:1;comment:状态： 0 删除  1 未使用 2 已经过期 3 冻结" json:"status"` // 状态： 0 删除  1 未使用 2 已经过期 3 冻结
-	CreateTime time.Time `gorm:"column:create_time;comment:创建时间" json:"create_time"`                                 // 创建时间
-	UpdateTime time.Time `gorm:"column:update_time;comment:更新时间" json:"update_time"`                                 // 更新时间
-	DeleteTime time.Time `gorm:"column:delete_time;comment:删除时间" json:"delete_time"`                                 // 删除时间
+	Status     bool      `gorm:"column:status;not null;default:1;comment:状态： 0 删除  1 未使用 2 已经 3过期 4 冻结" json:"status"` // 状态： 0 删除  1 未使用 2 已经 3过期 4 冻结
+	CreateTime time.Time `gorm:"column:create_time;comment:创建时间" json:"create_time"`                                   // 创建时间
+	UpdateTime time.Time `gorm:"column:update_time;comment:更新时间" json:"update_time"`                                   // 更新时间
+	DeleteTime time.Time `gorm:"column:delete_time;comment:删除时间" json:"delete_time"`                                   // 删除时间
 }
 
 // TableName MmUserCoupon's table name
