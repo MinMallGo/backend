@@ -5,6 +5,7 @@ import (
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
+	"mall_backend/util"
 )
 
 // SpuCreate 创建spu分类
@@ -20,7 +21,7 @@ func SpuCreate(c *gin.Context, create *dto.SpuCreate) {
 	//	return
 	//}
 
-	err := dao.NewSpuDao().Create(create)
+	err := dao.NewSpuDao(util.DBClient()).Create(create)
 	if err != nil {
 		response.Failure(c, "创建失败")
 		return
@@ -32,7 +33,7 @@ func SpuCreate(c *gin.Context, create *dto.SpuCreate) {
 
 // SpuDelete 删除spu分类
 func SpuDelete(c *gin.Context, delete *dto.SpuDelete) {
-	err := dao.NewSpuDao().Delete(delete)
+	err := dao.NewSpuDao(util.DBClient()).Delete(delete)
 	if err != nil {
 		response.Failure(c, "删除失败")
 		return
@@ -54,7 +55,7 @@ func SpuUpdate(c *gin.Context, update *dto.SpuUpdate) {
 	//	return
 	//}
 
-	err := dao.NewSpuDao().Update(update)
+	err := dao.NewSpuDao(util.DBClient()).Update(update)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -66,7 +67,7 @@ func SpuUpdate(c *gin.Context, update *dto.SpuUpdate) {
 
 // SpuSearch 查询
 func SpuSearch(c *gin.Context, search *dto.SpuSearch) {
-	res, err := dao.NewSpuDao().Search(search)
+	res, err := dao.NewSpuDao(util.DBClient()).Search(search)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return

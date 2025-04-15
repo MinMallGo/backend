@@ -5,10 +5,11 @@ import (
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
+	"mall_backend/util"
 )
 
 func SpecKeyCreate(c *gin.Context, create *dto.SpecKeyCreate) {
-	res, err := dao.NewSpecKeyDao().Create(create)
+	res, err := dao.NewSpecKeyDao(util.DBClient()).Create(create)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
@@ -18,7 +19,7 @@ func SpecKeyCreate(c *gin.Context, create *dto.SpecKeyCreate) {
 }
 
 func SpecKeyDelete(c *gin.Context, delete *dto.SpecKeyDelete) {
-	err := dao.NewSpecKeyDao().Delete(delete)
+	err := dao.NewSpecKeyDao(util.DBClient()).Delete(delete)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
@@ -28,7 +29,7 @@ func SpecKeyDelete(c *gin.Context, delete *dto.SpecKeyDelete) {
 }
 
 func SpecKeyUpdate(c *gin.Context, update *dto.SpecKeyUpdate) {
-	err := dao.NewSpecKeyDao().Update(update)
+	err := dao.NewSpecKeyDao(util.DBClient()).Update(update)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return
@@ -38,7 +39,7 @@ func SpecKeyUpdate(c *gin.Context, update *dto.SpecKeyUpdate) {
 }
 
 func SpecKeySearch(c *gin.Context, search *dto.SpecKeySearch) {
-	res, err := dao.NewSpecKeyDao().More(search)
+	res, err := dao.NewSpecKeyDao(util.DBClient()).More(search)
 	if err != nil {
 		response.Failure(c, err.Error())
 		return

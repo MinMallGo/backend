@@ -5,17 +5,18 @@ import (
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
+	"mall_backend/util"
 )
 
 func CartSearch(c *gin.Context, param *dto.CartSearch) {
 	//	 TODO 获取当前登录的用户信息
-	user, err := dao.NewUserDao().CurrentUser(c.GetHeader("token"))
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	data, err := dao.NewCartDao().Search(param, int(user.ID))
+	data, err := dao.NewCartDao(util.DBClient()).Search(param, int(user.ID))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -26,13 +27,13 @@ func CartSearch(c *gin.Context, param *dto.CartSearch) {
 
 func CartCreate(c *gin.Context, param *dto.CartCreate) {
 	//	 TODO 获取当前登录的用户信息
-	user, err := dao.NewUserDao().CurrentUser(c.GetHeader("token"))
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	err = dao.NewCartDao().Create(param, int(user.ID))
+	err = dao.NewCartDao(util.DBClient()).Create(param, int(user.ID))
 
 	if err != nil {
 		response.Error(c, err)
@@ -43,13 +44,13 @@ func CartCreate(c *gin.Context, param *dto.CartCreate) {
 }
 
 func CartUpdate(c *gin.Context, param *dto.CartUpdate) {
-	user, err := dao.NewUserDao().CurrentUser(c.GetHeader("token"))
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	err = dao.NewCartDao().Update(param, int(user.ID))
+	err = dao.NewCartDao(util.DBClient()).Update(param, int(user.ID))
 
 	if err != nil {
 		response.Error(c, err)
@@ -60,13 +61,13 @@ func CartUpdate(c *gin.Context, param *dto.CartUpdate) {
 }
 
 func CartDelete(c *gin.Context, param *dto.CartDelete) {
-	user, err := dao.NewUserDao().CurrentUser(c.GetHeader("token"))
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	err = dao.NewCartDao().Delete(param, int(user.ID))
+	err = dao.NewCartDao(util.DBClient()).Delete(param, int(user.ID))
 
 	if err != nil {
 		response.Error(c, err)

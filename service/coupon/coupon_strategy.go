@@ -1,6 +1,10 @@
 package coupon
 
-import "mall_backend/dao"
+import (
+	"log"
+	"mall_backend/dao"
+	"mall_backend/structure"
+)
 
 /**
 策略模式来计算使用优惠券之后的价格
@@ -14,28 +18,16 @@ import "mall_backend/dao"
 */
 
 type Strategies interface {
-	ApplyStrategy(ctx *Context)
+	ApplyStrategy(ctx *structure.Context)
 }
 
 // 把总价传过来，然后把券的计算规则传过来。就可以进行计算了
-
-type Context struct {
-	Price    int  // 原价
-	Category int  // 优惠券类型
-	Rules    Rule //  规则类型
-}
-
-type Rule struct {
-	Threshold     int
-	DisCountPrice int
-	DiscountRate  int
-}
 
 type PlatformStrategy struct {
 	//
 }
 
-func (t *PlatformStrategy) ApplyStrategy(ctx *Context) {
+func (t *PlatformStrategy) ApplyStrategy(ctx *structure.Context) {
 	if ctx.Category == dao.DiscountType {
 		FullDiscount(ctx)
 	}
@@ -43,12 +35,14 @@ func (t *PlatformStrategy) ApplyStrategy(ctx *Context) {
 	if ctx.Category == dao.RateType {
 		DiscountRate(ctx)
 	}
+	log.Println(ctx.Price)
 }
 
 type MerchantStrategy struct {
 }
 
-func (m *MerchantStrategy) ApplyStrategy(ctx *Context) {
+func (m *MerchantStrategy) ApplyStrategy(ctx *structure.Context) {
+	log.Printf("%#v\n", ctx)
 	if ctx.Category == dao.DiscountType {
 		FullDiscount(ctx)
 	}
@@ -56,11 +50,12 @@ func (m *MerchantStrategy) ApplyStrategy(ctx *Context) {
 	if ctx.Category == dao.RateType {
 		DiscountRate(ctx)
 	}
+	log.Println(ctx.Price)
 }
 
 type CategoryStrategy struct{}
 
-func (c *CategoryStrategy) ApplyStrategy(ctx *Context) {
+func (c *CategoryStrategy) ApplyStrategy(ctx *structure.Context) {
 	if ctx.Category == dao.DiscountType {
 		FullDiscount(ctx)
 	}
@@ -71,13 +66,13 @@ func (c *CategoryStrategy) ApplyStrategy(ctx *Context) {
 }
 
 // FullDiscount 满减
-func FullDiscount(ctx *Context) {
+func FullDiscount(ctx *structure.Context) {
 	if ctx.Price > ctx.Rules.Threshold {
 		ctx.Price -= ctx.Rules.DisCountPrice
 	}
 	return
 }
 
-func DiscountRate(ctx *Context) {
+func DiscountRate(ctx *structure.Context) {
 	ctx.Price = ctx.Price * ctx.Rules.DiscountRate / 100
 }

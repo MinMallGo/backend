@@ -45,3 +45,11 @@ func genRandomString(lens int) string {
 
 	return string(s)
 }
+
+func OrderCode() string {
+	return "order" + genRandomString(16)
+}
+
+func SubOrderCode() string {
+	return "suborder" + genRandomString(16)
+}

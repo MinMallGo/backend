@@ -90,11 +90,11 @@ func SecKillDelete(activeId int) error {
 // 检查秒杀活动是否选择了正确是商品，规格，以及规格，规格价格，以及库存
 func secKillChecker(param *dto.SecKillInfo) error {
 	var err error
-	if !dao.NewSpuDao().Exists(param.SpuId) {
+	if !dao.NewSpuDao(util.DBClient()).Exists(param.SpuId) {
 		err = errors.Join(err, errors.New("请选择正确的商品"))
 	}
 
-	if !dao.NewSkuDao().Exists(param.SkuId) {
+	if !dao.NewSkuDao(util.DBClient()).Exists(param.SkuId) {
 		err = errors.Join(err, errors.New("请选择正确的规格"))
 	}
 	//

@@ -18,7 +18,7 @@ import (
 // sku验证，spec_key验证，value_id验证
 // 感觉有点繁琐啊，创建规格名字可以理解，但是为什么要创建了规格值才能传？
 func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
-	if !dao.NewSpuDao().Exists(create.SpuID) {
+	if !dao.NewSpuDao(util.DBClient()).Exists(create.SpuID) {
 		response.Failure(c, "创建失败：请选择正确的商品")
 		return
 	}
@@ -28,7 +28,7 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 		idx = append(idx, specs.KeyID)
 	}
 
-	if len(idx) == 0 || !dao.NewSpecKeyDao().Exists(idx...) {
+	if len(idx) == 0 || !dao.NewSpecKeyDao(util.DBClient()).Exists(idx...) {
 		response.Failure(c, "创建失败：请选择正确的商品规格名")
 		return
 	}
@@ -37,13 +37,13 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 	for _, specs := range create.Spec {
 		ids = append(ids, specs.ValID)
 	}
-	if len(ids) == 0 || !dao.NewSpecValueDao().Exists(ids...) {
+	if len(ids) == 0 || !dao.NewSpecValueDao(util.DBClient()).Exists(ids...) {
 		response.Failure(c, "创建失败：请选择正确的商品值")
 		return
 	}
 
 	// 使用事务包裹
-	if err := dao.NewSkuDao().Create(create); err != nil {
+	if err := dao.NewSkuDao(util.DBClient()).Create(create); err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
@@ -54,7 +54,7 @@ func SkuCreate(c *gin.Context, create *dto.SkuCreate) {
 
 // SkuDelete 删除Sku分类
 func SkuDelete(c *gin.Context, delete *dto.SkuDelete) {
-	err := dao.NewSkuDao().Delete(delete.Id)
+	err := dao.NewSkuDao(util.DBClient()).Delete(delete.Id)
 	if err != nil {
 		response.Failure(c, "删除失败")
 		return
@@ -66,18 +66,18 @@ func SkuDelete(c *gin.Context, delete *dto.SkuDelete) {
 
 // SkuUpdate 修改Sku的分类信息
 func SkuUpdate(c *gin.Context, update *dto.SkuUpdate) {
-	if !dao.NewSpuDao().Exists(update.SpuID) {
+	if !dao.NewSpuDao(util.DBClient()).Exists(update.SpuID) {
 		response.Failure(c, "修改失败：请选择正确的商品")
 		return
 	}
 
-	if !dao.NewSkuDao().Exists(update.SpuID) {
+	if !dao.NewSkuDao(util.DBClient()).Exists(update.SpuID) {
 		response.Failure(c, "修改失败：请选择正确的商品规格")
 		return
 	}
 
 	// 使用事务包裹
-	if err := dao.NewSkuDao().Update(update); err != nil {
+	if err := dao.NewSkuDao(util.DBClient()).Update(update); err != nil {
 		response.Failure(c, err.Error())
 		return
 	}
