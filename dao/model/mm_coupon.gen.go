@@ -20,7 +20,7 @@ type MmCoupon struct {
 	DiscountPrice    int32     `gorm:"column:discount_price;comment:优惠券金额 * 100  或者 百分之多少的折扣" json:"discount_price"` // 优惠券金额 * 100  或者 百分之多少的折扣
 	DiscountRate     int32     `gorm:"column:discount_rate;comment:打折比例，1-100 .这是里放大了100倍的" json:"discount_rate"`    // 打折比例，1-100 .这是里放大了100倍的
 	Code             string    `gorm:"column:code;comment:优惠券唯一表示，可用于核销等" json:"code"`                               // 优惠券唯一表示，可用于核销等
-	ReceiveCount     int32      `gorm:"column:receive_count;comment:可以领取的数量" json:"receive_count"`                    // 可以领取的数量
+	ReceiveCount     int32     `gorm:"column:receive_count;comment:可以领取的数量" json:"receive_count"`                    // 可以领取的数量
 	ReceiveStartTime time.Time `gorm:"column:receive_start_time;comment:开始领取时间" json:"receive_start_time"`           // 开始领取时间
 	ReceiveEndTime   time.Time `gorm:"column:receive_end_time;comment:领取结束时间" json:"receive_end_time"`               // 领取结束时间
 	UseStartTime     time.Time `gorm:"column:use_start_time;comment:优惠券开始时间" json:"use_start_time"`                  // 优惠券开始时间

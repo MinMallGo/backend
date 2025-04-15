@@ -1,72 +1,112 @@
 package dao
 
 import (
-	"errors"
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/util"
+	"time"
 )
 
 type OrderDao struct {
 	db *gorm.DB
 }
 
-func NewOrderDao() *OrderDao {
+func NewOrderDao(db *gorm.DB) *OrderDao {
 	return &OrderDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
-func (u *OrderDao) Create(create *dto.OrderCreate, userId int) error {
-	// 1. 事务启动
-	// 2. 检查商品，检查规格
-	// 3. 地址检查
-	// 4. 验证优惠券并计算价格
-	// 5. 构造数据
-	spuIds := make([]int, 0, len(create.Product))
-	skuIds := make([]int, 0, len(create.Product))
-	mSku := make(map[int]int, len(create.Product))
-	for _, v := range create.Product {
-		spuIds = append(spuIds, v.SpuID)
-		skuIds = append(skuIds, v.SkuID)
-		mSku[v.SkuID] = v.Num
+func (u *OrderDao) Create(create *dto.OrderCreate, userId int, originalPrice, finalPrice int) error {
+	// 1. 创建订单
+	// 2. 扣减优惠券
+	// 3. 扣减库存
+	// 5. 扣减用户优惠券 // TODO 别想这么多啊，一个优惠券就只能有一次
+	//
+
+	coupons := ""
+	for i, v := range create.Coupons {
+		coupons += fmt.Sprintf("%d", v)
+		if i < len(create.Coupons)-1 {
+			coupons += ","
+		}
 	}
 
-	if !NewSpuDao().Exists(spuIds...) {
-		return errors.New("创建订单失败：请选择正确的商品")
+	orderCode := util.OrderCode()
+
+	order := &model.MmOrder{
+		OrderCode:     orderCode,
+		UserID:        int32(userId),
+		OriginalPrice: int32(originalPrice),
+		AddressID:     int32(create.AddressID),
+		FinalPrice:    int32(finalPrice),
+		Coupons:       coupons,
+		PaymentStatus: 0,
+		PaymentWay:    0,
+		Source:        int32(create.Source),
+		IsSign:        0,
+		SignDate:      util.MinDateTime(),
+		Status:        true,
+		CreateTime:    time.Now(),
+		UpdateTime:    util.MinDateTime(),
+		DeleteTime:    util.MinDateTime(),
 	}
-	if !NewSkuDao().Exists(skuIds...) {
-		return errors.New("创建订单失败：请选择正确是商品规格")
+
+	subOrder := []model.MmSubOrder{}
+	stock := []StockUpdate{}
+	for _, item := range create.Product {
+		subOrder = append(subOrder, model.MmSubOrder{
+			OrderCode:       orderCode,
+			OrderUniqueCode: util.SubOrderCode(),
+			SpuID:           int32(item.SpuID),
+			SkuID:           int32(item.SkuID),
+			Nums:            int32(item.Num),
+			OriginalPrice:   int32(originalPrice),
+			FinalPrice:      int32(finalPrice),
+			AddressID:       int32((*create).AddressID),
+			CouponID:        0,
+			PaymentStatus:   0,
+			PaymentWay:      0,
+			IsSign:          0,
+			SignDate:        util.MinDateTime(),
+			Status:          false,
+			CreateTime:      time.Now(),
+			UpdateTime:      util.MinDateTime(),
+			DeleteTime:      util.MinDateTime(),
+		})
+		stock = append(stock, StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Num,
+		})
 	}
-	if !NewAddrDao().ExistsWithUser(userId, create.AddressID) {
-		return errors.New("创建订单失败：请选择正确的地址")
-	}
-	if !NewCouponDao().ExistsWithUser(userId, create.Coupons...) {
-		return errors.New("创建订单失败：请选择正确的优惠券")
-	}
-	// 通过查询获取到商品的价格
-	product, err := NewSkuDao().MoreWithOrder(&create.Product)
+
+	err := u.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&model.MmOrder{}).Create(&order).Error
+		if err != nil {
+			return err
+		}
+		if err = tx.Model(&model.MmSubOrder{}).Create(&subOrder).Error; err != nil {
+			return err
+		}
+		if err = NewCouponDao(u.db).CouponUse(create.Coupons...); err != nil {
+			return err
+		}
+		if err = NewSkuDao(u.db).StockDecrease(&stock); err != nil {
+			return err
+		}
+		if err = NewUserCouponDao(u.db).Use(userId, create.Coupons...); err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
-		return errors.New("创建订单失败：优惠券检查失败")
+		return err
 	}
-
-	totalPrice := 0
-	for _, item := range *product {
-		totalPrice += int(item.Price) * mSku[int(item.ID)]
-	}
-
-	coupons, err := NewCouponDao().More(create.Coupons...)
-	if err != nil {
-		return errors.New("创建订单失败：查询优惠券失败")
-	}
-
-	// TODO 检查商户优惠券是否能用。 这里商户还没写欸，先不加
-
-	for _, item := range *coupons {
-
-	}
-
-	// calculate final price
-
 	return nil
 }
+
+func (u *OrderDao) OrderPay(c *gin.Context) {}

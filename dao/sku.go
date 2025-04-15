@@ -15,13 +15,13 @@ type SkuDao struct {
 	db *gorm.DB
 }
 
-func NewSkuDao() *SkuDao {
-	return &SkuDao{db: util.DBClient()}
+func NewSkuDao(db *gorm.DB) *SkuDao {
+	return &SkuDao{db: db}
 }
 
 func (d *SkuDao) Create(create *dto.SkuCreate) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
-		title, specs, err := NewSpecKeyDao().GenSkuData(&create.Spec)
+		title, specs, err := NewSpecKeyDao(d.db).GenSkuData(&create.Spec)
 		if err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ func (d *SkuDao) Create(create *dto.SkuCreate) error {
 
 func (d *SkuDao) Update(update *dto.SkuUpdate) error {
 	return d.db.Transaction(func(tx *gorm.DB) error {
-		title, specs, err := NewSpecKeyDao().GenSkuData(&update.Spec)
+		title, specs, err := NewSpecKeyDao(d.db).GenSkuData(&update.Spec)
 		if err != nil {
 			return err
 		}
@@ -89,6 +89,10 @@ func (d *SkuDao) Update(update *dto.SkuUpdate) error {
 }
 
 func (d *SkuDao) Exists(id ...int) bool {
+	if len(id) == 0 {
+		return false
+	}
+
 	return d.db.
 		Model(&model.MmSku{}).
 		Select("id").
@@ -151,27 +155,88 @@ func (d *SkuDao) MoreWithOrder(items *[]dto.ShoppingItem) (*[]model.MmSku, error
 // TODO 改造成一个sql。用case when then
 
 func (d *SkuDao) DecreaseStock(items *[]dto.ShoppingItem) bool {
+	decr := make([]StockUpdate, 0, len(*items))
 	for _, item := range *items {
-		tx := d.db.Model(&model.MmSku{}).
-			Where("id = ?", item.SkuID).
-			Where("status = ?", true).
-			Update("stock", fmt.Sprintf("stock - %d", item.Num))
-		if tx.Error != nil {
-			return false
-		}
+		decr = append(decr, StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Num,
+		})
 	}
+	// 改造成使用 case when then end 来一条sql执行
+	err := d.StockDecrease(&decr)
+	if err != nil {
+		return false
+	}
+
 	return true
 }
 
 func (d *SkuDao) IncreaseStock(items *[]dto.ShoppingItem) bool {
+	incr := make([]StockUpdate, 0, len(*items))
 	for _, item := range *items {
-		tx := d.db.Model(&model.MmSku{}).
-			Where("id = ?", item.SkuID).
-			Where("status = ?", true).
-			Update("stock", fmt.Sprintf("stock + %d", item.Num))
-		if tx.Error != nil {
-			return false
-		}
+		incr = append(incr, StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Num,
+		})
+	}
+	err := d.StockIncrease(&incr)
+	if err != nil {
+		return false
 	}
 	return true
+}
+
+type StockUpdate struct {
+	ID  int
+	Num int
+}
+
+func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
+	// update mm_sku set stock = case when id = 1 then stock - 1 when id = 2 then stock - 2 end where id in (1,2)
+	if len(*u) == 0 {
+		return nil
+	}
+	str := "WHEN id = %d THEN stock - %d"
+	when := ""
+	orStr := "(id = %d AND stock >= %d)"
+	where := ""
+	for index, item := range *u {
+		when += fmt.Sprintf(str, item.ID, item.Num)
+		where += fmt.Sprintf(orStr, item.ID, item.Num)
+		if index < len(*u)-1 {
+			where += "OR"
+		}
+	}
+
+	sql := `UPDATE mm_sku SET stock = CASE %s END WHERE %s`
+	sql = fmt.Sprintf(sql, when, where)
+	//res := &model.MmSku{}
+	tx := d.db.Raw(sql).Debug().Exec(sql)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return nil
+}
+
+func (d *SkuDao) StockIncrease(u *[]StockUpdate) error {
+	if len(*u) == 0 {
+		return nil
+	}
+	str := "WHEN id = %d THEN stock + %d"
+	when := ""
+	idx := ""
+	for index, update := range *u {
+		when += fmt.Sprintf(str, update.ID, update.Num)
+		idx += fmt.Sprintf("%d", update.Num)
+		if index < len(*u)-1 {
+			idx += ","
+		}
+	}
+	sql := `UPDATE mm_sku SET stock = CASE %s END WHERE id IN (%s) `
+	res := &model.MmSku{}
+	tx := d.db.Debug().Raw(fmt.Sprintf(sql, when, idx)).Scan(res)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return nil
 }

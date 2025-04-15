@@ -13,9 +13,9 @@ type SpecValueDao struct {
 	db *gorm.DB
 }
 
-func NewSpecValueDao() *SpecValueDao {
+func NewSpecValueDao(db *gorm.DB) *SpecValueDao {
 	return &SpecValueDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
@@ -79,6 +79,10 @@ func (d *SpecValueDao) Create(specId int, create ...string) ([]dto.SpecKeyCreate
 //
 // }
 func (d *SpecValueDao) Exists(id ...int) bool {
+	if len(id) == 0 {
+		return false
+	}
+
 	return util.DBClient().Model(&model.MmSpecValue{}).
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", id).

@@ -14,7 +14,7 @@ type CartDao struct {
 	db *gorm.DB
 }
 
-func NewCartDao() *CartDao {
+func NewCartDao(db *gorm.DB) *CartDao {
 	return &CartDao{
 		db: util.DBClient(),
 	}
@@ -24,11 +24,11 @@ func (d *CartDao) Create(create *dto.CartCreate, userId int) error {
 	// 判断用户是否存在
 	// TODO 这里就先不写了吧
 	// 判断spu，sku是否存在
-	if !NewSpuDao().Exists(create.SpuId) {
+	if !NewSpuDao(d.db).Exists(create.SpuId) {
 		return errors.New("添加到购物车失败：商品不存在")
 	}
 
-	if !NewSkuDao().Exists(create.SkuId) {
+	if !NewSkuDao(d.db).Exists(create.SkuId) {
 		return errors.New("添加到购物车失败：规格不存在")
 	}
 	// 检查当前spu,sku 是否存在，存在则修改数量而不是新增
@@ -65,11 +65,11 @@ func (d *CartDao) Create(create *dto.CartCreate, userId int) error {
 }
 
 func (d *CartDao) Update(update *dto.CartUpdate, userId int) error {
-	if !NewSpuDao().Exists(update.SpuId) {
+	if !NewSpuDao(d.db).Exists(update.SpuId) {
 		return errors.New("添加到购物车失败：商品不存在")
 	}
 
-	if !NewSkuDao().Exists(update.SkuId) {
+	if !NewSkuDao(d.db).Exists(update.SkuId) {
 		return errors.New("更新购物车失败：规格不存在")
 	}
 

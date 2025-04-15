@@ -15,10 +15,9 @@ type MmOrder struct {
 	ID            int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderCode     string    `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"`                                 // 订单唯一标识
 	UserID        int32     `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                         // 用户ID
-	Nums          int32     `gorm:"column:nums;not null;comment:购买数量" json:"nums"`                                               // 购买数量
 	OriginalPrice int32     `gorm:"column:original_price;not null;comment:原价 * 100" json:"original_price"`                       // 原价 * 100
 	AddressID     int32     `gorm:"column:address_id;not null;comment:收货地址" json:"address_id"`                                   // 收货地址
-	CouponsID     int32     `gorm:"column:coupons_id;comment:优惠券" json:"coupons_id"`                                             // 优惠券
+	Coupons       string     `gorm:"column:coupons;comment:优惠券" json:"coupons"`                                                   // 优惠券
 	FinalPrice    int32     `gorm:"column:final_price;not null;comment:最终价格 * 100" json:"final_price"`                           // 最终价格 * 100
 	PaymentStatus int32     `gorm:"column:payment_status;comment:是否支付" json:"payment_status"`                                    // 是否支付
 	PaymentWay    int32     `gorm:"column:payment_way;comment:支付方式：wx_pay 996 ali_pay 700 card_pay 789 ...." json:"payment_way"` // 支付方式：wx_pay 996 ali_pay 700 card_pay 789 ....

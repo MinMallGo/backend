@@ -13,9 +13,9 @@ type UserDao struct {
 	db *gorm.DB
 }
 
-func NewUserDao() *UserDao {
+func NewUserDao(db *gorm.DB) *UserDao {
 	return &UserDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
@@ -33,6 +33,10 @@ func (u *UserDao) CurrentUser(token string) (*model.MmUser, error) {
 }
 
 func (u *UserDao) Exists(id ...int) bool {
+	if len(id) == 0 {
+		return false
+	}
+
 	res := &[]model.MmUser{}
 	return u.db.Model(&model.MmUser{}).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
 }

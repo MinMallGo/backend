@@ -19,7 +19,7 @@ type MmAddress struct {
 	Address     string    `gorm:"column:address;not null;comment:收货人地址 === 额这里以后以后再说怎么拆分地址" json:"address"`         // 收货人地址 === 额这里以后以后再说怎么拆分地址
 	HouseNumber string    `gorm:"column:house_number;not null;comment:门牌号" json:"house_number"`                     // 门牌号
 	IsDefault   bool      `gorm:"column:is_default;not null;default:1;comment:是否默认地址" json:"is_default"`            // 是否默认地址
-	Tag         bool      `gorm:"column:tag;comment:地址标签。以后再扩展" json:"tag"`                                         // 地址标签。以后再扩展
+	Tag         string      `gorm:"column:tag;comment:地址标签。以后再扩展" json:"tag"`                                         // 地址标签。以后再扩展
 	Status      bool      `gorm:"column:status;not null;default:1;comment:状态： 0 删除 2 禁用 3 账号异常 1 正常" json:"status"` // 状态： 0 删除 2 禁用 3 账号异常 1 正常
 	CreateTime  time.Time `gorm:"column:create_time;comment:创建时间" json:"create_time"`                               // 创建时间
 	UpdateTime  time.Time `gorm:"column:update_time;comment:更新时间" json:"update_time"`                               // 更新时间

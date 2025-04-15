@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	constants "mall_backend/constant"
 	"mall_backend/dao/model"
@@ -11,14 +13,14 @@ import (
 
 // `discount_type`  '1 = 满减，2 = 折扣',
 const (
-	DiscountType int = iota
+	DiscountType int = 1 + iota
 	RateType
 )
 
 // `use_range` '使用范围：1 全平台，2商家 3 类别 4 具体商品 5 某个规格',
 const (
-	RangeAll = iota
-	RangeShop
+	RangeAll = 1 + iota
+	RangeMerchant
 	RangeCategory
 	RangeSpu
 	RangeSKU
@@ -28,9 +30,9 @@ type CouponDao struct {
 	db *gorm.DB
 }
 
-func NewCouponDao() *CouponDao {
+func NewCouponDao(db *gorm.DB) *CouponDao {
 	return &CouponDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
@@ -151,30 +153,42 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 	return res, nil
 }
 
-func (c *CouponDao) ExistsWithUser(userId int, ids ...int) bool {
+func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 	// 检查优惠券是否可用
-	coupons := &model.MmCoupon{}
+	coupons := &[]model.MmCoupon{}
 	res := c.db.Model(&model.MmCoupon{}).
+		Debug().
 		Where("status", true).
 		Where("id in ?", ids).
 		Where("total_count > use_count"). // 没有使用完才能用
+		Distinct("discount_type").
 		Find(coupons)
 	if res.Error != nil || res.RowsAffected < int64(len(ids)) {
-		return false
+		return res.Error
+	}
+
+	distinctCoupon := make(map[int]struct{})
+	for _, coupon := range *coupons {
+		distinctCoupon[int(coupon.DiscountType)] = struct{}{}
+
+	}
+	if len(distinctCoupon) < len(ids) {
+		return errors.New("同类券不能多次叠加使用")
 	}
 
 	// 检查用户优惠券
 	var count int64
-	res = c.db.Model(&model.MmCoupon{}).
+	res = c.db.Model(&model.MmUserCoupon{}).
+		Debug().
 		Where("id in ?", ids).
 		Where("user_id = ?", userId).
 		Where("is_used = ?", false).
 		Where("status = ?", 1).
 		Count(&count)
 	if res.Error != nil || (count) < int64(len(ids)) {
-		return false
+		return res.Error
 	}
-	return true
+	return nil
 }
 
 func (c *CouponDao) More(ids ...int) (res *[]model.MmCoupon, err error) {
@@ -183,6 +197,39 @@ func (c *CouponDao) More(ids ...int) (res *[]model.MmCoupon, err error) {
 		return
 	}
 	return
+}
+
+type CouponUpdate struct {
+	ID  int
+	Num int
+}
+
+func (c *CouponDao) CouponUse(u ...int) error {
+	// update xx set stock = case when id = 1 then stock - 1 when id = 2 then stock - 2 end where id in (1,2)
+	if len(u) == 0 {
+		return nil
+	}
+	str := "WHEN id = %d THEN use_count + %d "
+	when := ""
+	orStr := "(id = %d AND total_count >= use_count + %d )"
+	where := ""
+	for index, item := range u {
+		when += fmt.Sprintf(str, item, 1)
+		where += fmt.Sprintf(orStr, item, 1)
+		if index < len(u)-1 {
+			where += " OR "
+		}
+	}
+
+	sql := `UPDATE mm_coupon SET use_count = CASE %s END WHERE %s`
+	sql = fmt.Sprintf(sql, when, where)
+	//res := &[]model.MmSku{}
+
+	tx := c.db.Debug().Exec(sql)
+	if tx.Error != nil || tx.RowsAffected < int64(len(u)) {
+		return errors.New("使用优惠券失败")
+	}
+	return nil
 }
 
 func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {

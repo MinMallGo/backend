@@ -14,13 +14,17 @@ type SpuDao struct {
 	db *gorm.DB
 }
 
-func NewSpuDao() *SpuDao {
+func NewSpuDao(db *gorm.DB) *SpuDao {
 	return &SpuDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
 func (u *SpuDao) Exists(id ...int) bool {
+	if len(id) == 0 {
+		return false
+	}
+
 	res := &[]model.MmSpu{}
 	return u.db.Model(&model.MmSpu{}).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
 }

@@ -19,9 +19,9 @@ type SpecKeyDao struct {
 	db *gorm.DB
 }
 
-func NewSpecKeyDao() *SpecKeyDao {
+func NewSpecKeyDao(db *gorm.DB) *SpecKeyDao {
 	return &SpecKeyDao{
-		db: util.DBClient(),
+		db: db,
 	}
 }
 
@@ -53,7 +53,7 @@ func (d *SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateRes
 		spuId = int(param.ID)
 	}
 
-	values, err := NewSpecValueDao().Create(int(spuId), create.Value...)
+	values, err := NewSpecValueDao(d.db).Create(int(spuId), create.Value...)
 	if err != nil {
 		tx.Rollback()
 		return
@@ -123,6 +123,10 @@ func (d *SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error)
 }
 
 func (d *SpecKeyDao) Exists(specId ...int) bool {
+	if len(specId) == 0 {
+		return false
+	}
+
 	return d.db.
 		Model(&model.MmSpecKey{}).
 		Debug().
