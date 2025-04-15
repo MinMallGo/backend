@@ -18,9 +18,11 @@ var (
 
 // DBInstance 数据库连接单例。  .Client.Action()
 func DBInstance() (*structure.DatabaseClient, error) {
-	dbOnce.Do(func() {
-		database = connectDatabase()
-	})
+	if database == nil {
+		dbOnce.Do(func() {
+			database = connectDatabase()
+		})
+	}
 
 	if database == nil {
 		return nil, errors.New("failed to initialize Database client")
@@ -52,5 +54,6 @@ func connectDatabase() *structure.DatabaseClient {
 
 // DBClient 我甚至不想把error带出去
 func DBClient() *gorm.DB {
-	return database.Client
+	// TODO 这里读取配置文件，如果是debug就加上debug，全局开启sql日志记录
+	return database.Client.Debug()
 }
