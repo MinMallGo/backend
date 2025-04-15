@@ -3,13 +3,14 @@ package service
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
+	"gorm.io/gorm"
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
 	"mall_backend/service/coupon"
 	"mall_backend/structure"
 	"mall_backend/util"
+	"time"
 )
 
 // TODO 这里创建订单和下单需要两个步骤，先创建订单，然后才是订单支付。先不要考虑那么精细化
@@ -84,6 +85,7 @@ func OrderCreate(c *gin.Context, create *dto.OrderCreate) {
 		return
 	}
 
+	// 使用策略模式里面的优惠券
 	finalPrice := totalPrice
 	for _, item := range *coupons {
 		ctx := structure.Context{
@@ -103,7 +105,6 @@ func OrderCreate(c *gin.Context, create *dto.OrderCreate) {
 		if item.UseRange == dao.RangeMerchant {
 			strategy := &coupon.MerchantStrategy{}
 			strategy.ApplyStrategy(&ctx)
-			log.Println("after use coupon:", ctx.Price)
 		}
 
 		finalPrice = ctx.Price
@@ -118,7 +119,42 @@ func OrderCreate(c *gin.Context, create *dto.OrderCreate) {
 	return
 }
 
-func OrderPay(c *gin.Context) {
+func OrderPay(c *gin.Context, order *dto.PayOrder) {
 	// TODO 这里是支付订单，看有没有第三方的对接
 	// TODO 这里是消息通知  可能需要拆分。先弄个邮件发送得了
+	// TODO
+	// TODO 检查并支付  直接用事务吧
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err = util.DBClient().Transaction(func(tx *gorm.DB) error {
+		res, err := dao.NewOrderDao(tx).CheckBeforePay(order, int(user.ID))
+		if err != nil {
+			return err
+		}
+
+		// TODO 支付对接
+		time.Sleep(time.Second * 5)
+		// TODO 消息通知
+
+		if err = dao.NewOrderDao(tx).OrderPaid(order, int(user.ID)); err != nil {
+			return err
+		}
+
+		if err = dao.NewOrderPaidLogDao(tx).Create(res); err != nil {
+			return err
+		}
+
+		// 更新订单的状态
+		return nil
+	}); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, []string{})
+	return
 }
