@@ -28,3 +28,13 @@ type PayOrder struct {
 	ID        int    `json:"id" binding:"required"`
 	OrderCode string `json:"order_code" binding:"required"`
 }
+
+type CancelOrder struct {
+	ID        int    `json:"id" binding:"required"`
+	OrderCode string `json:"order_code" binding:"required"`
+}
+
+type OrderExpire struct {
+	ID        int    `json:"id" binding:"required"`
+	OrderCode string `json:"order_code" binding:"required"`
+}
