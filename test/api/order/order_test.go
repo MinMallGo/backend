@@ -11,19 +11,24 @@ import (
 	"time"
 )
 
+var (
+	total       = 1000 // 总请求数
+	concurrency = 500  // 并发数
+	url         = "http://localhost:8080/v1"
+)
+
 func TestPay(t *testing.T) {
 	t.Helper()
 	pay()
 }
 
-func pay() {
+type TestStruct struct {
+	uri   string
+	data  string
+	token string
+}
 
-	var (
-		total       = 1000 // 总请求数
-		concurrency = 500  // 并发数
-		url         = "http://localhost:8080/v1/order/pay"
-	)
-
+func goTest(ts *TestStruct) {
 	var wg sync.WaitGroup
 	sema := make(chan struct{}, concurrency) // 控制并发数
 	success := 0
@@ -38,7 +43,7 @@ func pay() {
 			defer wg.Done()
 			defer func() { <-sema }() // 释放槽
 
-			resp, err := req([]byte(`{"id":1,"order_code":"orderoidfvdpnkunhlfllh"}`), url, "POST", "fowtvmwxajcbpvhgybyxkhqgronp")
+			resp, err := req([]byte(ts.data), url+ts.uri, "POST", ts.token)
 			if err != nil || resp.StatusCode != 200 {
 				fail++
 			} else {
@@ -58,7 +63,15 @@ func pay() {
 	cost := time.Since(start)
 
 	fmt.Printf("✅ 成功: %d\n❌ 失败: %d\n⏱️ 总耗时: %v\n", success, fail, cost)
+}
 
+func pay() {
+	ts := &TestStruct{
+		uri:   "/order/pay",
+		data:  `{"id":14,"order_code":"orderlgdepzldxogcspdse"}`,
+		token: `ijzbokdthzqumdmzlkfppusgsqns`,
+	}
+	goTest(ts)
 }
 
 // req send a request. return *http.Response, you must close response.Body while use it over
