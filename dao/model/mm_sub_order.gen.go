@@ -10,7 +10,7 @@ import (
 
 const TableNameMmSubOrder = "mm_sub_order"
 
-// MmSubOrder mapped from table <mm_sub_order>
+// MmSubOrder 子订单表 -- 由 mm_order拆分
 type MmSubOrder struct {
 	ID              int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderCode       string    `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"`                                 // 订单唯一标识

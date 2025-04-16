@@ -10,7 +10,7 @@ import (
 
 const TableNameMmOrderPaidLog = "mm_order_paid_log"
 
-// MmOrderPaidLog mapped from table <mm_order_paid_log>
+// MmOrderPaidLog 订单支付记录
 type MmOrderPaidLog struct {
 	ID        int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderID   int32     `gorm:"column:order_id;not null" json:"order_id"`

@@ -10,7 +10,7 @@ import (
 
 const TableNameMmUserCoupon = "mm_user_coupon"
 
-// MmUserCoupon mapped from table <mm_user_coupon>
+// MmUserCoupon 用户优惠券
 type MmUserCoupon struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	UserID     int32     `gorm:"column:user_id;not null" json:"user_id"`

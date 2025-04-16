@@ -10,18 +10,12 @@ import (
 
 const TableNameMmActiveSeckill = "mm_active_seckill"
 
-// MmActiveSeckill 秒杀表
+// MmActiveSeckill 秒杀主表
 type MmActiveSeckill struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	SpuID      int32     `gorm:"column:spu_id;not null;comment:商品ID" json:"spu_id"`    // 商品ID
-	SkuID      int32     `gorm:"column:sku_id;not null;comment:规格ID" json:"sku_id"`    // 规格ID
-	SpecID     int32     `gorm:"column:spec_id;not null;comment:具体的规格" json:"spec_id"` // 具体的规格
-	Stock      int32     `gorm:"column:stock;not null;comment:库存" json:"stock"`        // 库存
+	Name       string    `gorm:"column:name;not null" json:"name"`
 	StartTime  time.Time `gorm:"column:start_time" json:"start_time"`
 	EndTime    time.Time `gorm:"column:end_time" json:"end_time"`
-	Name       string    `gorm:"column:name;not null" json:"name"`
-	Desc       string    `gorm:"column:desc" json:"desc"`
-	Price      int32     `gorm:"column:price;comment:秒杀价格 * 100" json:"price"`                          // 秒杀价格 * 100
 	Status     bool      `gorm:"column:status;not null;default:1;comment:状态： 0 删除  1 正常" json:"status"` // 状态： 0 删除  1 正常
 	CreateTime time.Time `gorm:"column:create_time;comment:创建时间" json:"create_time"`                    // 创建时间
 	UpdateTime time.Time `gorm:"column:update_time;comment:更新时间" json:"update_time"`                    // 更新时间

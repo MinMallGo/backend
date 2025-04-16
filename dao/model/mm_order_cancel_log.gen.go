@@ -10,7 +10,7 @@ import (
 
 const TableNameMmOrderCancelLog = "mm_order_cancel_log"
 
-// MmOrderCancelLog mapped from table <mm_order_cancel_log>
+// MmOrderCancelLog 订单退款记录
 type MmOrderCancelLog struct {
 	ID          int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderID     int32     `gorm:"column:order_id;not null" json:"order_id"`
