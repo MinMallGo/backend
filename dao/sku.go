@@ -112,7 +112,7 @@ func (d *SkuDao) Delete(id ...int) error {
 			return err
 		}
 
-		err = d.db.Model(&model.MmSpec{}).Debug().Where("sku_id in ?", id).Updates(map[string]interface{}{
+		err = d.db.Model(&model.MmSpec{}).Where("sku_id in ?", id).Updates(map[string]interface{}{
 			"status":      constants.BanStatus,
 			"delete_time": time.Now().Format("2006-01-02 15:04:05"),
 		}).Error
@@ -211,7 +211,7 @@ func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
 	sql := `UPDATE mm_sku SET stock = CASE %s END WHERE %s`
 	sql = fmt.Sprintf(sql, when, where)
 	//res := &model.MmSku{}
-	tx := d.db.Raw(sql).Debug().Exec(sql)
+	tx := d.db.Raw(sql).Exec(sql)
 	if tx.Error != nil {
 		return tx.Error
 	}
@@ -234,7 +234,7 @@ func (d *SkuDao) StockIncrease(u *[]StockUpdate) error {
 	}
 	sql := `UPDATE mm_sku SET stock = CASE %s END WHERE id IN (%s) `
 	res := &model.MmSku{}
-	tx := d.db.Debug().Raw(fmt.Sprintf(sql, when, idx)).Scan(res)
+	tx := d.db.Raw(fmt.Sprintf(sql, when, idx)).Scan(res)
 	if tx.Error != nil {
 		return tx.Error
 	}

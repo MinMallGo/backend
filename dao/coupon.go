@@ -125,7 +125,7 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 		param = append(param, search.UseEndTime)
 	}
 
-	tx := c.db.Model(&model.MmCoupon{}).Debug().
+	tx := c.db.Model(&model.MmCoupon{}).
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -136,7 +136,6 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 
 	var count int64
 	tx = c.db.Model(&model.MmCoupon{}).
-		Debug().
 		Where(whereStr, param...).
 		Count(&count)
 	if tx.Error != nil {
@@ -157,7 +156,6 @@ func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 	// 检查优惠券是否可用
 	coupons := &[]model.MmCoupon{}
 	res := c.db.Model(&model.MmCoupon{}).
-		Debug().
 		Where("status", true).
 		Where("id in ?", ids).
 		Where("total_count > use_count"). // 没有使用完才能用
@@ -179,7 +177,6 @@ func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 	// 检查用户优惠券
 	var count int64
 	res = c.db.Model(&model.MmUserCoupon{}).
-		Debug().
 		Where("id in ?", ids).
 		Where("user_id = ?", userId).
 		Where("is_used = ?", false).
@@ -192,7 +189,7 @@ func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 }
 
 func (c *CouponDao) More(ids ...int) (res *[]model.MmCoupon, err error) {
-	err = c.db.Model(&model.MmCoupon{}).Debug().Where("id in ?", ids).Where("status = ?", true).Find(&res).Error
+	err = c.db.Model(&model.MmCoupon{}).Where("id in ?", ids).Where("status = ?", true).Find(&res).Error
 	if err != nil {
 		return
 	}
@@ -225,7 +222,7 @@ func (c *CouponDao) CouponUse(u ...int) error {
 	sql = fmt.Sprintf(sql, when, where)
 	//res := &[]model.MmSku{}
 
-	tx := c.db.Debug().Exec(sql)
+	tx := c.db.Exec(sql)
 	if tx.Error != nil || tx.RowsAffected < int64(len(u)) {
 		return errors.New("使用优惠券失败")
 	}
@@ -234,7 +231,7 @@ func (c *CouponDao) CouponUse(u ...int) error {
 
 func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 	res := &[]model.MmCoupon{}
-	err := util.DBClient().Model(&model.MmCoupon{}).Debug().Where("status = ?", constants.NormalStatus).Find(res, ids)
+	err := util.DBClient().Model(&model.MmCoupon{}).Where("status = ?", constants.NormalStatus).Find(res, ids)
 	if err.Error != nil {
 		return nil, err.Error
 	}

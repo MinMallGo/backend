@@ -111,7 +111,7 @@ func (u *SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
 		param = append(param, search.CategoryId)
 	}
 
-	tx := u.db.Model(&model.MmSpu{}).Debug().
+	tx := u.db.Model(&model.MmSpu{}).
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -123,7 +123,7 @@ func (u *SpuDao) Search(search *dto.SpuSearch) (*dto.PaginateCount, error) {
 	}
 
 	var count int64
-	err := u.db.Model(&model.MmSpu{}).Debug().Where(whereStr, param...).Count(&count).Error
+	err := u.db.Model(&model.MmSpu{}).Where(whereStr, param...).Count(&count).Error
 	if err != nil {
 		return result, err
 	}

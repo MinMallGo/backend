@@ -40,7 +40,7 @@ func SpecUpdate(spuId, skuId int, create *[]dto.Specs) (err error) {
 		})
 	}
 
-	err = util.DBClient().Debug().Model(&model.MmSpec{}).Where("spu_id = ?", spuId).Where("sku_id = ?", skuId).Delete(&model.MmSpec{}).Error
+	err = util.DBClient().Model(&model.MmSpec{}).Where("spu_id = ?", spuId).Where("sku_id = ?", skuId).Delete(&model.MmSpec{}).Error
 	if err != nil {
 		return
 	}

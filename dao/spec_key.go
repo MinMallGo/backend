@@ -66,7 +66,8 @@ func (d *SpecKeyDao) Create(create *dto.SpecKeyCreate) (res dto.SpecKeyCreateRes
 }
 
 func (d *SpecKeyDao) Update(update *dto.SpecKeyUpdate) (err error) {
-	return d.db.Model(&model.MmSpecKey{}).Where("id = ?", update.Id).Debug().Updates(map[string]interface{}{
+	return d.db.Model(&model.MmSpecKey{}).
+		Where("id = ?", update.Id).Updates(map[string]interface{}{
 		"name":        update.Name,
 		"unit":        update.Uint,
 		"update_time": time.Now().Format("2006-01-02 15:04:05"),
@@ -74,14 +75,14 @@ func (d *SpecKeyDao) Update(update *dto.SpecKeyUpdate) (err error) {
 }
 
 func (d *SpecKeyDao) Delete(delete *dto.SpecKeyDelete) (err error) {
-	return d.db.Model(&model.MmSpecKey{}).Where("id = ?", delete.Id).Debug().Updates(map[string]interface{}{
+	return d.db.Model(&model.MmSpecKey{}).Where("id = ?", delete.Id).Updates(map[string]interface{}{
 		"status":      constants.BanStatus,
 		"delete_time": time.Now().Format("2006-01-02 15:04:05"),
 	}).Error
 }
 
 func (d *SpecKeyDao) OneById(keyId int) (res *SpecKey, err error) {
-	err = d.db.Model(model.MmSpecKey{}).Where("id = ?", keyId).Debug().Preload("Value").Find(&res).Error
+	err = d.db.Model(model.MmSpecKey{}).Where("id = ?", keyId).Preload("Value").Find(&res).Error
 	if err != nil {
 		return nil, err
 	}
@@ -104,12 +105,12 @@ func (d *SpecKeyDao) More(search *dto.SpecKeySearch) (*dto.PaginateCount, error)
 	}
 
 	param := &[]SpecKey{}
-	err := d.db.Model(&model.MmSpecKey{}).Debug().Offset((search.Page-1)*search.Size).Preload("Value").Limit(search.Size).Where(whereStr, params).Find(param).Error
+	err := d.db.Model(&model.MmSpecKey{}).Offset((search.Page-1)*search.Size).Preload("Value").Limit(search.Size).Where(whereStr, params).Find(param).Error
 	if err != nil {
 		return nil, err
 	}
 	var count int64 = 0
-	err = d.db.Model(&model.MmSpecKey{}).Debug().Where(whereStr, params).Count(&count).Error
+	err = d.db.Model(&model.MmSpecKey{}).Where(whereStr, params).Count(&count).Error
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,6 @@ func (d *SpecKeyDao) Exists(specId ...int) bool {
 
 	return d.db.
 		Model(&model.MmSpecKey{}).
-		Debug().
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", specId).
 		Find(&[]model.MmSpecKey{}).
@@ -147,7 +147,7 @@ func (d *SpecKeyDao) GenSkuData(spec *[]dto.Specs) (title string, specs []byte, 
 		valueIds = append(valueIds, spec.ValID)
 	}
 	res := &[]SpecKey{}
-	err = d.db.Model(&model.MmSpecKey{}).Debug().Preload("Value", func(db *gorm.DB) *gorm.DB {
+	err = d.db.Model(&model.MmSpecKey{}).Preload("Value", func(db *gorm.DB) *gorm.DB {
 		return db.Select("id,key_id,name").Find(&model.MmSpecValue{}, valueIds)
 	}).Select("id,name,unit").Find(res, keyIds).Error
 	if err != nil {
