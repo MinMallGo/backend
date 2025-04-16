@@ -229,6 +229,33 @@ func (c *CouponDao) CouponUse(u ...int) error {
 	return nil
 }
 
+func (c *CouponDao) Cancel(ids ...int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	str := "WHEN id = %d THEN use_count - %d "
+	when := ""
+	whereStr := " id in ( %s ) "
+	where := ""
+	for index, item := range ids {
+		when += fmt.Sprintf(str, item, 1)
+		where += fmt.Sprintf(" '%d' ", item)
+		if index < len(ids)-1 {
+			where += ","
+		}
+	}
+
+	sql := `UPDATE mm_coupon SET use_count = CASE %s END WHERE %s`
+	sql = fmt.Sprintf(sql, when, fmt.Sprintf(whereStr, where))
+	//res := &[]model.MmSku{}
+
+	tx := c.db.Exec(sql)
+	if tx.Error != nil || tx.RowsAffected < int64(len(ids)) {
+		return errors.New("归还优惠券失败")
+	}
+	return nil
+}
+
 func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 	res := &[]model.MmCoupon{}
 	err := util.DBClient().Model(&model.MmCoupon{}).Where("status = ?", constants.NormalStatus).Find(res, ids)

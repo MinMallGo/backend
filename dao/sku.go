@@ -92,13 +92,12 @@ func (d *SkuDao) Exists(id ...int) bool {
 	if len(id) == 0 {
 		return false
 	}
-
 	return d.db.
 		Model(&model.MmSku{}).
 		Select("id").
 		Where("status = ?", constants.NormalStatus).
 		Where("id in ?", id).
-		First(&model.MmCategory{}).
+		Find(&[]model.MmCategory{}).
 		RowsAffected == int64(len(id))
 }
 
@@ -171,19 +170,19 @@ func (d *SkuDao) DecreaseStock(items *[]dto.ShoppingItem) bool {
 	return true
 }
 
-func (d *SkuDao) IncreaseStock(items *[]dto.ShoppingItem) bool {
+func (d *SkuDao) IncreaseStock(items *[]model.MmSubOrder) error {
 	incr := make([]StockUpdate, 0, len(*items))
 	for _, item := range *items {
 		incr = append(incr, StockUpdate{
-			ID:  item.SkuID,
-			Num: item.Num,
+			ID:  int(item.SkuID),
+			Num: int(item.Nums),
 		})
 	}
 	err := d.StockIncrease(&incr)
 	if err != nil {
-		return false
+		return err
 	}
-	return true
+	return nil
 }
 
 type StockUpdate struct {
@@ -196,7 +195,7 @@ func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
 	if len(*u) == 0 {
 		return nil
 	}
-	str := "WHEN id = %d THEN stock - %d"
+	str := " WHEN id = %d THEN stock - %d "
 	when := ""
 	orStr := "(id = %d AND stock >= %d)"
 	where := ""
@@ -222,12 +221,12 @@ func (d *SkuDao) StockIncrease(u *[]StockUpdate) error {
 	if len(*u) == 0 {
 		return nil
 	}
-	str := "WHEN id = %d THEN stock + %d"
+	str := " WHEN id = %d THEN stock + %d "
 	when := ""
 	idx := ""
 	for index, update := range *u {
 		when += fmt.Sprintf(str, update.ID, update.Num)
-		idx += fmt.Sprintf("%d", update.Num)
+		idx += fmt.Sprintf("%d", update.ID)
 		if index < len(*u)-1 {
 			idx += ","
 		}

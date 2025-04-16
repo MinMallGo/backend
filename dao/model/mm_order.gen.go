@@ -13,18 +13,19 @@ const TableNameMmOrder = "mm_order"
 // MmOrder 订单表
 type MmOrder struct {
 	ID            int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	OrderCode     string    `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"`                                 // 订单唯一标识
-	UserID        int32     `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                         // 用户ID
-	OriginalPrice int32     `gorm:"column:original_price;not null;comment:原价 * 100" json:"original_price"`                       // 原价 * 100
-	AddressID     int32     `gorm:"column:address_id;not null;comment:收货地址" json:"address_id"`                                   // 收货地址
-	Coupons       string    `gorm:"column:coupons;comment:优惠券" json:"coupons"`                                                   // 优惠券
-	FinalPrice    int32     `gorm:"column:final_price;not null;comment:最终价格 * 100" json:"final_price"`                           // 最终价格 * 100
-	PaymentStatus int32     `gorm:"column:payment_status;comment:是否支付" json:"payment_status"`                                    // 是否支付
-	PaymentWay    int32     `gorm:"column:payment_way;comment:支付方式：wx_pay 996 ali_pay 700 card_pay 789 ...." json:"payment_way"` // 支付方式：wx_pay 996 ali_pay 700 card_pay 789 ....
-	Source        int32     `gorm:"column:source;comment:来源： 1 H5 2 小程序 ..." json:"source"`                                      // 来源： 1 H5 2 小程序 ...
-	IsSign        int32     `gorm:"column:is_sign;comment:是否签收" json:"is_sign"`                                                  // 是否签收
-	SignDate      time.Time `gorm:"column:sign_date;comment:签收时间-7天自动签收" json:"sign_date"`                                       // 签收时间-7天自动签收
-	Status        bool      `gorm:"column:status;default:1;comment:默认启用吧" json:"status"`                                         // 默认启用吧
+	OrderCode     string    `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"`                                          // 订单唯一标识
+	UserID        int32     `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                                  // 用户ID
+	OriginalPrice int32     `gorm:"column:original_price;not null;comment:原价 * 100" json:"original_price"`                                // 原价 * 100
+	AddressID     int32     `gorm:"column:address_id;not null;comment:收货地址" json:"address_id"`                                            // 收货地址
+	Coupons       string    `gorm:"column:coupons;comment:优惠券" json:"coupons"`                                                            // 优惠券
+	FinalPrice    int32     `gorm:"column:final_price;not null;comment:最终价格 * 100" json:"final_price"`                                    // 最终价格 * 100
+	PaymentStatus int32     `gorm:"column:payment_status;comment:是否支付" json:"payment_status"`                                             // 是否支付
+	PaymentWay    int32     `gorm:"column:payment_way;comment:支付方式：wx_pay 996 ali_pay 700 card_pay 789 ...." json:"payment_way"`          // 支付方式：wx_pay 996 ali_pay 700 card_pay 789 ....
+	Source        int32     `gorm:"column:source;comment:来源： 1 H5 2 小程序 ..." json:"source"`                                               // 来源： 1 H5 2 小程序 ...
+	IsSign        int32     `gorm:"column:is_sign;comment:是否签收" json:"is_sign"`                                                           // 是否签收
+	ProcessStatus int32     `gorm:"column:process_status;not null;comment:订单进程状态：0 待支付，1已支付 2已过期 3申请退款 4已退款 5订单完成" json:"process_status"` // 订单进程状态：0 待支付，1已支付 2已过期 3申请退款 4已退款 5订单完成
+	SignDate      time.Time `gorm:"column:sign_date;comment:签收时间-7天自动签收" json:"sign_date"`                                                // 签收时间-7天自动签收
+	Status        bool      `gorm:"column:status;default:1;comment:默认启用吧" json:"status"`                                                  // 默认启用吧
 	CreateTime    time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime    time.Time `gorm:"column:update_time" json:"update_time"`
 	DeleteTime    time.Time `gorm:"column:delete_time" json:"delete_time"`

@@ -12,7 +12,7 @@ const TableNameMmOrderPaidLog = "mm_order_paid_log"
 
 // MmOrderPaidLog mapped from table <mm_order_paid_log>
 type MmOrderPaidLog struct {
-	ID        int32     `gorm:"column:id;primaryKey" json:"id"`
+	ID        int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderID   int32     `gorm:"column:order_id;not null" json:"order_id"`
 	OrderCode string    `gorm:"column:order_code" json:"order_code"`
 	UserID    int32     `gorm:"column:user_id;not null" json:"user_id"`
