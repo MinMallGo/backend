@@ -13,6 +13,7 @@ const TableNameMmActiveSeckill = "mm_active_seckill"
 // MmActiveSeckill 秒杀主表
 type MmActiveSeckill struct {
 	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	ActiveID   int32     `gorm:"column:active_id;not null" json:"active_id"`
 	Name       string    `gorm:"column:name;not null" json:"name"`
 	StartTime  time.Time `gorm:"column:start_time" json:"start_time"`
 	EndTime    time.Time `gorm:"column:end_time" json:"end_time"`

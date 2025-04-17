@@ -51,3 +51,17 @@ func (d *UserCouponDao) Cancel(userId int, couponIds ...int) error {
 	}
 	return nil
 }
+
+func (d *UserCouponDao) Exists(userId int, ids ...int) error {
+	var count int64
+	res := d.db.Model(&model.MmUserCoupon{}).
+		Where("id in ?", ids).
+		Where("user_id = ?", userId).
+		Where("is_used = ?", false).
+		Where("status = ?", 1).
+		Count(&count)
+	if res.Error != nil || (count) < int64(len(ids)) {
+		return res.Error
+	}
+	return nil
+}

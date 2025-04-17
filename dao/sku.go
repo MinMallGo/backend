@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/util"
+	"strings"
 	"time"
 )
 
@@ -99,6 +101,39 @@ func (d *SkuDao) Exists(id ...int) bool {
 		Where("id in ?", id).
 		Find(&[]model.MmCategory{}).
 		RowsAffected == int64(len(id))
+}
+
+type ExistsAndStock struct {
+	ID    int
+	Stock int
+}
+
+// Enough 规格存在且存量足够
+func (d *SkuDao) Enough(skus []ExistsAndStock) error {
+	if len(skus) == 0 {
+		return errors.New("创建订单失败：商品不能为空")
+	}
+	// 构造 SQL 条件
+	conditions := make([]string, 0, len(skus))
+	values := make([]interface{}, 0, len(skus)*2)
+	for _, s := range skus {
+		conditions = append(conditions, "(id = ? AND stock >= ? AND status = ?)")
+		values = append(values, s.ID, s.Stock, constants.NormalStatus)
+	}
+
+	// 拼接成 WHERE 子句
+	whereClause := strings.Join(conditions, " OR ")
+
+	var count int64
+	tx := d.db.Model(&model.MmSku{}).Where(whereClause, values...).Count(&count)
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if count != int64(len(skus)) {
+		return errors.New("商品或库存不足")
+	}
+	return nil
 }
 
 func (d *SkuDao) Delete(id ...int) error {
@@ -193,7 +228,7 @@ type StockUpdate struct {
 func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
 	// update mm_sku set stock = case when id = 1 then stock - 1 when id = 2 then stock - 2 end where id in (1,2)
 	if len(*u) == 0 {
-		return nil
+		return errors.New("商品库存扣减失败")
 	}
 	str := " WHEN id = %d THEN stock - %d "
 	when := ""
@@ -211,9 +246,14 @@ func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
 	sql = fmt.Sprintf(sql, when, where)
 	//res := &model.MmSku{}
 	tx := d.db.Raw(sql).Exec(sql)
+
 	if tx.Error != nil {
 		return tx.Error
 	}
+	if tx.RowsAffected != int64(len(*u)) {
+		return errors.New("商品库存扣减失败")
+	}
+
 	return nil
 }
 
@@ -239,3 +279,21 @@ func (d *SkuDao) StockIncrease(u *[]StockUpdate) error {
 	}
 	return nil
 }
+
+// SecKillCreate 扣减库存
+func (d *SkuDao) SecKillCreate(items *[]dto.SecKillCreate) error {
+	if len(*items) == 0 {
+		return errors.New("创建秒杀活动：预扣减库存失败")
+	}
+
+	decr := make([]StockUpdate, 0, len(*items))
+	for _, item := range *items {
+		decr = append(decr, StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Stock,
+		})
+	}
+	return d.StockDecrease(&decr)
+}
+
+// TODO 还需要一张库存变动信息表应该。

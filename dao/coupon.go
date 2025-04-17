@@ -174,17 +174,6 @@ func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 		return errors.New("同类券不能多次叠加使用")
 	}
 
-	// 检查用户优惠券
-	var count int64
-	res = c.db.Model(&model.MmUserCoupon{}).
-		Where("id in ?", ids).
-		Where("user_id = ?", userId).
-		Where("is_used = ?", false).
-		Where("status = ?", 1).
-		Count(&count)
-	if res.Error != nil || (count) < int64(len(ids)) {
-		return res.Error
-	}
 	return nil
 }
 
@@ -252,6 +241,21 @@ func (c *CouponDao) Cancel(ids ...int) error {
 	tx := c.db.Exec(sql)
 	if tx.Error != nil || tx.RowsAffected < int64(len(ids)) {
 		return errors.New("归还优惠券失败")
+	}
+	return nil
+}
+
+func (c *CouponDao) Exists(ids ...int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	res := c.db.Model(&model.MmCoupon{}).
+		Where("status", true).
+		Where("id in ?", ids).
+		Distinct("discount_type").
+		Find(&[]model.MmCoupon{})
+	if res.Error != nil || res.RowsAffected < int64(len(ids)) {
+		return res.Error
 	}
 	return nil
 }

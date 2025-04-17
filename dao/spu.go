@@ -20,13 +20,17 @@ func NewSpuDao(db *gorm.DB) *SpuDao {
 	}
 }
 
-func (u *SpuDao) Exists(id ...int) bool {
-	if len(id) == 0 {
+func (u *SpuDao) Exists(ids ...int) bool {
+	if len(ids) == 0 {
 		return false
 	}
 
-	res := &[]model.MmSpu{}
-	return u.db.Model(&model.MmSpu{}).Where("id in ?", id).Find(res).RowsAffected == int64(len(id))
+	var count int64
+	tx := u.db.Model(&model.MmSpu{}).Where("id in ?", ids).Count(&count)
+	if tx.Error != nil || count != int64(len(ids)) {
+		return false
+	}
+	return true
 }
 
 func (u *SpuDao) Create(create *dto.SpuCreate) error {
