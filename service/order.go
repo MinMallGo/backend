@@ -83,6 +83,11 @@ func OrderCreate(c *gin.Context, create *dto.OrderCreate) {
 		return
 	}
 
+	if err = dao.NewUserCouponDao(util.DBClient()).Exists(int(user.ID), create.Coupons...); err != nil {
+		response.Error(c, errors.Join(errors.New("创建订单失败：请选择检查个人优惠券："), err))
+		return
+	}
+
 	// 通过查询获取到商品的价格
 	product, err := dao.NewSkuDao(util.DBClient()).MoreWithOrder(&create.Product)
 	if err != nil {
