@@ -11,5 +11,6 @@ func ActiveRegister(r *gin.Engine) {
 	{
 		v1.POST("/active/create", active.Create)
 		v1.POST("/active/update", active.Update)
+		v1.POST("/active/purchase", active.Purchase)
 	}
 }

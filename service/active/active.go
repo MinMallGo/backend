@@ -7,6 +7,7 @@ import (
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
+	"mall_backend/service/order"
 	"mall_backend/util"
 )
 
@@ -95,7 +96,7 @@ func Update(c *gin.Context, update *dto.ActiveUpdate) {
 		response.Error(c, err)
 		return
 	}
-	
+
 	// 检查优惠券
 	if err := dao.NewCouponDao(util.DBClient()).Exists(update.Coupons...); err != nil {
 		response.Error(c, errors.New("更新活动失败：请选择正确的优惠券"))
@@ -175,5 +176,48 @@ func Update(c *gin.Context, update *dto.ActiveUpdate) {
 	}
 
 	response.Success(c, []string{})
+	return
+}
+
+func Purchase(c *gin.Context, purchase *dto.ActivePurchase) {
+	// 1. 检查活动是否可用， 比如在不在活动范围内。
+	// 2. 移交到order的create
+	if err := dao.NewActiveDao(util.DBClient()).BeforePurchase(purchase); err != nil {
+		response.Error(c, err)
+		return
+	}
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
+	if err != nil {
+		response.Error(c, errors.New("请登陆后操作"))
+		return
+	}
+	// 检查当前用户是否参与了当前的秒杀
+	if err = dao.NewSeckillLog(util.DBClient()).Exists(int(user.ID), purchase); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	purchase.SeckillID, err = dao.NewSecKillDao(util.DBClient()).GetID(purchase.ActiveID)
+	if err != nil {
+		response.Failure(c, "参与秒杀失败：请检查活动是否存在")
+		return
+	}
+
+	// 检查商品和库存
+	if err = dao.NewSecKillProductDao(util.DBClient()).Exist(purchase); err != nil {
+		response.Error(c, errors.New("秒杀失败：商品库存不足"))
+		return
+	}
+
+	ctx := &order.Context{
+		Param:  purchase,
+		UserID: int(user.ID),
+	}
+	result, err := order.GetStrategy(purchase.Type).Purchase(ctx)
+	if err != nil {
+		response.Error(c, errors.New("参与秒杀活动失败"))
+		return
+	}
+	response.Success(c, result)
 	return
 }

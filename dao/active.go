@@ -64,3 +64,16 @@ func (d *ActiveDao) Exists(id int) error {
 	}
 	return nil
 }
+
+func (d *ActiveDao) BeforePurchase(purchase *dto.ActivePurchase) error {
+	tx := d.db.Model(&model.MmActive{}).Where("id = ? AND start_time <= ? AND end_time >= ? AND status = ?",
+		purchase.ActiveID, time.Now(), time.Now(), true,
+	).First(&model.MmActive{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return errors.New("购买失败：活动不存在或者不在活动时间内")
+	}
+	return nil
+}

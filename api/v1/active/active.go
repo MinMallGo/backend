@@ -24,3 +24,12 @@ func Update(c *gin.Context) {
 	}
 	active.Update(c, param)
 }
+
+func Purchase(c *gin.Context) {
+	param := &dto.ActivePurchase{}
+	if err := c.ShouldBind(param); err != nil {
+		response.Failure(c, err.Error())
+		return
+	}
+	active.Purchase(c, param)
+}

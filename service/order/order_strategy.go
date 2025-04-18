@@ -193,6 +193,88 @@ func (n *NormalStrategy) Purchase(ctx *Context) (res Result, err error) {
 type SeckillStrategy struct{}
 
 func (s *SeckillStrategy) Purchase(ctx *Context) (res Result, err error) {
+	// 1. 查询当前秒杀的商品的价格
+	// 1. 创建普通订单
+	// 2. 修改秒杀表商品的库存
+	// 3. 写入参与秒杀日志表
+	// 4.
+	purchase, ok := ctx.Param.(*dto.ActivePurchase)
+	if !ok {
+		return res, errors.New("参与秒杀失败：assert *dto.ActivePurchase failed")
+	}
 
-	return Result{}, nil
+	seckillID, err := dao.NewSecKillDao(util.DBClient()).GetID(purchase.ActiveID)
+	if err != nil {
+		return res, errors.New("参与秒杀失败：请检查活动是否存在")
+	}
+
+	price, err := dao.NewSecKillProductDao(util.DBClient()).Price(purchase.SeckillID, purchase.Product.SkuID)
+
+	orderCode := util.OrderCode()
+	orderCreate := &model.MmOrder{
+		OrderCode:     orderCode,
+		UserID:        int32(ctx.UserID),
+		OriginalPrice: int32(price),
+		AddressID:     int32(purchase.AddressID),
+		Coupons:       "",
+		FinalPrice:    int32(price),
+		PaymentStatus: 0,
+		PaymentWay:    0,
+		Source:        int32(purchase.Source),
+		IsSign:        0,
+		ProcessStatus: dao.OrderNeedPay,
+		SignDate:      util.MinDateTime(),
+		Status:        true,
+		CreateTime:    time.Now(),
+		UpdateTime:    util.MinDateTime(),
+		DeleteTime:    util.MinDateTime(),
+	}
+	subOrder := []model.MmSubOrder{{
+		OrderCode:       orderCode,
+		OrderUniqueCode: util.SubOrderCode(),
+		SpuID:           int32(purchase.Product.SpuID),
+		SkuID:           int32(purchase.Product.SkuID),
+		Nums:            1,
+		OriginalPrice:   int32(price),
+		FinalPrice:      int32(price),
+		AddressID:       int32(purchase.AddressID),
+		CouponID:        0,
+		PaymentStatus:   0,
+		PaymentWay:      0,
+		IsSign:          0,
+		SignDate:        util.MinDateTime(),
+		Status:          false,
+		CreateTime:      time.Now(),
+		UpdateTime:      util.MinDateTime(),
+		DeleteTime:      util.MinDateTime(),
+	}}
+
+	var orderId int
+	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
+		orderId, err = dao.NewOrderDao(tx).Create(orderCreate)
+		if err != nil {
+			return err
+		}
+		if err = dao.NewSubOrderDao(tx).Create(&subOrder); err != nil {
+			return err
+		}
+
+		if err = dao.NewSecKillProductDao(tx).DecrStock(seckillID, purchase.Product.SkuID); err != nil {
+			return err
+		}
+
+		if err = dao.NewSeckillLog(tx).Create(ctx.UserID, purchase); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return res, err
+	}
+
+	return Result{
+		ID:   orderId,
+		Code: orderCode,
+	}, nil
 }

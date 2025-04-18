@@ -26,3 +26,13 @@ type ActiveUpdate struct {
 	ID int `json:"id" binding:"required,gt=0"`
 	ActiveCreate
 }
+
+type ActivePurchase struct {
+	ActiveID  int          `json:"active_id" binding:"required,gt=0"`
+	Type      int          `json:"type" binding:"required,oneof=1 2"`
+	SeckillID int          `json:"seckill_id" binding:"gt=0"`
+	AddressID int          `json:"address_id" binding:"required"`
+	Product   ShoppingItem `json:"product" binding:"required"`
+	PayWay    int          `json:"pay_way" binding:"required,oneof=1 2"`
+	Source    int          `json:"source" binding:"required,oneof=1 2"`
+}
