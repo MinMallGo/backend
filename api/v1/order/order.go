@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"mall_backend/dto"
 	"mall_backend/response"
-	"mall_backend/service"
+	"mall_backend/service/order"
 )
 
 func Create(c *gin.Context) {
@@ -13,7 +13,7 @@ func Create(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.OrderCreate(c, param)
+	order.OrderCreate(c, param)
 }
 
 func Pay(c *gin.Context) {
@@ -22,7 +22,7 @@ func Pay(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.OrderPay(c, param)
+	order.OrderPay(c, param)
 }
 
 // TODO 这里要优化成消息队列，因为如果通过时间段去查询，会造成表锁或者范围锁，因为没有对时间加索引，
@@ -34,7 +34,7 @@ func Expire(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.OrderExpire(c, param)
+	order.OrderExpire(c, param)
 }
 
 // CancelOrder 取消订单
@@ -44,7 +44,7 @@ func CancelOrder(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	service.CancelOrder(c, param)
+	order.CancelOrder(c, param)
 }
 
 // 退款
