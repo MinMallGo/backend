@@ -15,3 +15,12 @@ func Create(c *gin.Context) {
 	}
 	active.Create(c, param)
 }
+
+func Update(c *gin.Context) {
+	param := &dto.ActiveUpdate{}
+	if err := c.ShouldBind(param); err != nil {
+		response.Failure(c, err.Error())
+		return
+	}
+	active.Update(c, param)
+}

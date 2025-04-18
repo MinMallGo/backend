@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"mall_backend/dao/model"
+	"mall_backend/dto"
 	"mall_backend/util"
 	"time"
 )
@@ -22,7 +23,7 @@ func (d *ActiveCouponDao) Create(activeID int, coupons ...int) error {
 	if len(coupons) == 0 {
 		return nil
 	}
-	
+
 	param := make([]model.MmActiveCoupon, 0, len(coupons))
 	for _, coupon := range coupons {
 		param = append(param, model.MmActiveCoupon{
@@ -39,4 +40,15 @@ func (d *ActiveCouponDao) Create(activeID int, coupons ...int) error {
 		return errors.New("创建活动优惠券失败")
 	}
 	return nil
+}
+
+func (d *ActiveCouponDao) Update(update *dto.ActiveUpdate) error {
+	err := d.db.Model(&model.MmActiveCoupon{}).
+		Where("active_id = ? AND coupon_id in ?", update.ID, update.Coupons).
+		Update("status", false).Error
+	if err != nil {
+		return err
+	}
+
+	return d.Create(update.ID, update.Coupons...)
 }

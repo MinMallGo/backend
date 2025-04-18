@@ -10,5 +10,6 @@ func ActiveRegister(r *gin.Engine) {
 	v1 := r.Group("v1").Use(middleware.AuthVerify())
 	{
 		v1.POST("/active/create", active.Create)
+		v1.POST("/active/update", active.Update)
 	}
 }

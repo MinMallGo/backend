@@ -40,3 +40,27 @@ func (d *ActiveDao) Create(create *dto.ActiveCreate) (int, error) {
 	}
 	return int(param.ID), nil
 }
+
+func (d *ActiveDao) Update(update *dto.ActiveUpdate) error {
+	tx := d.db.Model(&model.MmActive{}).Where("id = ?", update.ID).Updates(map[string]interface{}{
+		"name":       update.Name,
+		"type":       update.Type,
+		"desc":       update.Desc,
+		"start_time": update.StartTime,
+		"end_time":   update.EndTime,
+	})
+	if tx.Error != nil || tx.RowsAffected == 0 {
+		return tx.Error
+	}
+
+	return nil
+}
+
+func (d *ActiveDao) Exists(id int) error {
+	var count int64
+	tx := d.db.Model(&model.MmActive{}).Where("id = ?", id).Count(&count)
+	if tx.Error != nil || count == 0 {
+		return errors.New("更新活动失败：请选择正确的活动")
+	}
+	return nil
+}

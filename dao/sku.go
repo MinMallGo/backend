@@ -296,4 +296,41 @@ func (d *SkuDao) SecKillCreate(items *[]dto.SecKillCreate) error {
 	return d.StockDecrease(&decr)
 }
 
+func (d *SkuDao) SecKillUpdate(id int, items *[]dto.SecKillCreate) error {
+	if len(*items) == 0 {
+		return errors.New("更新秒杀活动失败")
+	}
+	
+	//  还需要一个前置条件就是，把原来的查询出来，然后进行库存增加操作，再然后才是对库存进行减操作
+	ex := &[]model.MmSeckillProduct{}
+	tx := d.db.Model(&model.MmSeckillProduct{}).Where("seckill_id = ? AND status = ?", id, true).Find(ex)
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if len(*ex) > 0 {
+		incr := make([]StockUpdate, 0, len(*items))
+		// 进行库存归还操作
+		for _, product := range *ex {
+			incr = append(incr, StockUpdate{
+				ID:  int(product.SkuID),
+				Num: int(product.Stock),
+			})
+		}
+		err := d.StockIncrease(&incr)
+		if err != nil {
+			return errors.New("更新秒杀活动失败：归还原有商品库存失败")
+		}
+	}
+
+	decr := make([]StockUpdate, 0, len(*items))
+	for _, item := range *items {
+		decr = append(decr, StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Stock,
+		})
+	}
+	return d.StockDecrease(&decr)
+}
+
 // TODO 还需要一张库存变动信息表应该。

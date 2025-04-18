@@ -35,3 +35,24 @@ func (s *SecKillDao) Create(activeID int, create *dto.ActiveCreate) (int, error)
 
 	return int(param.ID), nil
 }
+
+func (s *SecKillDao) Update(update *dto.ActiveUpdate) error {
+	tx := s.db.Model(&model.MmActiveSeckill{}).Where("active_id = ? AND status = ?", update.ID, true).Updates(map[string]interface{}{
+		"name":       update.Name,
+		"start_time": update.StartTime,
+		"end_time":   update.EndTime,
+	})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return nil
+}
+
+func (s *SecKillDao) GetID(activeID int) (int, error) {
+	res := &model.MmActiveSeckill{}
+	tx := s.db.Model(&model.MmActiveSeckill{}).Select("id").Where("active_id = ?", activeID).Find(res)
+	if tx.Error != nil || res.ID == 0 {
+		return 0, tx.Error
+	}
+	return int(res.ID), nil
+}

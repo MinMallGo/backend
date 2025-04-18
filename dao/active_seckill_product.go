@@ -26,6 +26,7 @@ func (s *SecKillProductDao) Create(seckillID int, create *[]dto.SecKillCreate) e
 			Stock:     int32(item.Stock),
 			Sold:      0,
 			Version:   0,
+			Status:    true,
 			StartTime: item.StartTime,
 			EndTime:   item.EndTime,
 			CreatedAt: util.MinDateTime(),
@@ -39,4 +40,12 @@ func (s *SecKillProductDao) Create(seckillID int, create *[]dto.SecKillCreate) e
 	}
 
 	return nil
+}
+
+func (s *SecKillProductDao) Update(secKillID int, update *[]dto.SecKillCreate) error {
+	tx := s.db.Model(&model.MmSeckillProduct{}).Where("seckill_id = ?", secKillID).Update("status", false)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return s.Create(secKillID, update)
 }
