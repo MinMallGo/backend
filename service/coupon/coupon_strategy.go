@@ -3,7 +3,6 @@ package coupon
 import (
 	"log"
 	"mall_backend/dao"
-	"mall_backend/structure"
 )
 
 /**
@@ -17,37 +16,40 @@ import (
 先满减，再打折。如果可以的话，先平台，后商户
 */
 
+type Context struct {
+	Price int               // 原价
+	Num   int               // 如果是是件数，还需要传入件数，比如满几件打几折
+	cl    dao.CouponLadders // 优惠券以及优惠券类型
+}
+
 type Strategies interface {
-	ApplyStrategy(ctx *structure.Context)
+	ApplyStrategy(ctx *Context)
 }
 
 // 把总价传过来，然后把券的计算规则传过来。就可以进行计算了
 
-type PlatformStrategy struct {
-	//
-}
+type PlatformStrategy struct{}
 
-func (t *PlatformStrategy) ApplyStrategy(ctx *structure.Context) {
-	if ctx.Category == dao.DiscountType {
+func (t *PlatformStrategy) ApplyStrategy(ctx *Context) {
+	if int(ctx.cl.DiscountType) == dao.DiscountType {
 		FullDiscount(ctx)
 	}
 
-	if ctx.Category == dao.RateType {
+	if int(ctx.cl.DiscountType) == dao.RateType {
 		DiscountRate(ctx)
 	}
 	log.Println(ctx.Price)
 }
 
-type MerchantStrategy struct {
-}
+type MerchantStrategy struct{}
 
-func (m *MerchantStrategy) ApplyStrategy(ctx *structure.Context) {
+func (m *MerchantStrategy) ApplyStrategy(ctx *Context) {
 	log.Printf("%#v\n", ctx)
-	if ctx.Category == dao.DiscountType {
+	if int(ctx.cl.DiscountType) == dao.DiscountType {
 		FullDiscount(ctx)
 	}
 
-	if ctx.Category == dao.RateType {
+	if int(ctx.cl.DiscountType) == dao.RateType {
 		DiscountRate(ctx)
 	}
 	log.Println(ctx.Price)
@@ -55,24 +57,46 @@ func (m *MerchantStrategy) ApplyStrategy(ctx *structure.Context) {
 
 type CategoryStrategy struct{}
 
-func (c *CategoryStrategy) ApplyStrategy(ctx *structure.Context) {
-	if ctx.Category == dao.DiscountType {
+func (c *CategoryStrategy) ApplyStrategy(ctx *Context) {
+	if int(ctx.cl.DiscountType) == dao.DiscountType {
 		FullDiscount(ctx)
 	}
 
-	if ctx.Category == dao.RateType {
+	if int(ctx.cl.DiscountType) == dao.RateType {
 		DiscountRate(ctx)
 	}
 }
 
-// FullDiscount 满减
-func FullDiscount(ctx *structure.Context) {
-	if ctx.Price > ctx.Rules.Threshold {
-		ctx.Price -= ctx.Rules.DisCountPrice
+// FullDiscount 满减 // 满500 - 200 // 满3件-200
+func FullDiscount(ctx *Context) {
+
+	// 如果是金额满减则比较金额，否则比较数量
+	if int(ctx.cl.ThresholdType) == dao.ThresholdAmount {
+		//
+		if ctx.Price >= int(ctx.cl.ThresholdValue) {
+			ctx.Price -= int(ctx.cl.DiscountValue)
+		}
+	} else {
+		if ctx.Num >= int(ctx.cl.ThresholdValue) {
+			ctx.Price -= int(ctx.cl.DiscountValue)
+		}
 	}
+
 	return
 }
 
-func DiscountRate(ctx *structure.Context) {
-	ctx.Price = ctx.Price * ctx.Rules.DiscountRate / 100
+// DiscountRate 满折 满500打8折，满 几件打几折
+func DiscountRate(ctx *Context) {
+	// 判断是否满足条件
+	if int(ctx.cl.ThresholdType) == dao.ThresholdAmount {
+		if ctx.Price >= int(ctx.cl.ThresholdValue) {
+			ctx.Price -= ctx.Price * int(ctx.cl.DiscountValue) / 100
+		}
+	} else {
+		if ctx.Num >= int(ctx.cl.ThresholdValue) {
+			ctx.Price -= ctx.Price * int(ctx.cl.DiscountValue) / 100
+		}
+	}
+
+	return
 }

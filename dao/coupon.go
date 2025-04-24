@@ -17,6 +17,11 @@ const (
 	RateType
 )
 
+const (
+	ThresholdAmount = 1
+	ThresholdUnit   = 2
+)
+
 // `use_range` '使用范围：1 全平台，2商家 3 类别 4 具体商品 5 某个规格',
 const (
 	RangeAll = 1 + iota
@@ -36,16 +41,16 @@ func NewCouponDao(db *gorm.DB) *CouponDao {
 	}
 }
 
-func (c *CouponDao) Create(create *dto.CouponCreate) error {
+func (c *CouponDao) Create(create *dto.CouponCreate) (int, error) {
 	param := &model.MmCoupon{
 		Name:             create.Name,
-		DiscountType:     int32(create.DiscountType),
-		UseRange:         int32(create.UseRange),
-		Threshold:        int32(create.Threshold),
-		DiscountPrice:    int32(create.DiscountPrice),
-		DiscountRate:     int32(create.DiscountRate),
 		Code:             util.CouponCode(),
-		ReceiveCount:     int32(create.ReceiveCount),
+		UsageScopeID:     int32(create.ScopeID),
+		ThresholdType:    int32(create.ThresholdType),
+		ThresholdValue:   int32(create.ThresholdValue),
+		DiscountType:     int32(create.DiscountType),
+		DiscountValue:    int32(create.DiscountValue),
+		UserReceiveLimit: create.ReceiveLimit == 0,
 		ReceiveStartTime: create.ReceiveStartTime,
 		ReceiveEndTime:   create.ReceiveEndTime,
 		UseStartTime:     create.UseStartTime,
@@ -56,12 +61,11 @@ func (c *CouponDao) Create(create *dto.CouponCreate) error {
 		Status:           true,
 		CreateTime:       time.Now().UTC(),
 		UpdateTime:       util.MinDateTime(),
-		DeleteTime:       util.MinDateTime(),
 	}
 	if tx := c.db.Model(&model.MmCoupon{}).Create(param); tx.Error != nil {
-		return tx.Error
+		return 0, tx.Error
 	}
-	return nil
+	return int(param.ID), nil
 }
 
 func (c *CouponDao) Delete(delete *dto.CouponDelete) error {
@@ -71,24 +75,26 @@ func (c *CouponDao) Delete(delete *dto.CouponDelete) error {
 }
 
 func (c *CouponDao) Update(update *dto.CouponUpdate) error {
-	return c.db.Model(&model.MmCoupon{}).Where("id = ?", update.ID).Updates(map[string]interface{}{
-		"name":               update.Name,
-		"discount_type":      update.DiscountType,
-		"use_range":          update.UseRange,
-		"threshold":          update.Threshold,
-		"discount_price":     update.DiscountPrice,
-		"discount_rate":      update.DiscountRate,
-		"receive_count":      update.ReceiveCount,
-		"receive_start_time": update.ReceiveStartTime,
-		"receive_end_time":   update.ReceiveEndTime,
-		"use_start_time":     update.UseStartTime,
-		"use_end_time":       update.UseEndTime,
-		"total_count":        update.TotalCount,
+	return c.db.Model(&model.MmCoupon{}).Where("id = ?", update.ID).Updates(model.MmCoupon{
+		Name:             update.Name,
+		Code:             util.CouponCode(),
+		UsageScopeID:     int32(update.ScopeID),
+		ThresholdType:    int32(update.ThresholdType),
+		ThresholdValue:   int32(update.ThresholdValue),
+		DiscountType:     int32(update.DiscountType),
+		DiscountValue:    int32(update.DiscountValue),
+		UserReceiveLimit: update.ReceiveLimit == 0,
+		ReceiveStartTime: update.ReceiveStartTime,
+		ReceiveEndTime:   update.ReceiveEndTime,
+		UseStartTime:     update.UseStartTime,
+		UseEndTime:       update.UseEndTime,
+		TotalCount:       int32(update.TotalCount),
+		UpdateTime:       time.Now().UTC(),
 	}).Error
 }
 
 func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) {
-	data := &[]model.MmCoupon{}
+	data := &[]CouponLadders{}
 
 	// 先写吧，优化等以后再来说
 	whereStr := "status = ?"
@@ -98,6 +104,11 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 	if len(search.Name) > 0 {
 		whereStr += " AND name LIKE ?"
 		param = append(param, "%"+search.Name+"%")
+	}
+
+	if search.ThresholdType > 0 {
+		whereStr += " AND threshold_type = ?"
+		param = append(param, search.ThresholdType)
 	}
 
 	if search.DiscountType > 0 {
@@ -126,6 +137,7 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 	}
 
 	tx := c.db.Model(&model.MmCoupon{}).
+		Preload("Ladders", "status = ?", constants.NormalStatus).
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -267,5 +279,22 @@ func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 		return nil, err.Error
 	}
 
+	return res, nil
+}
+
+type CouponLadders struct {
+	model.MmCoupon
+	Ladders []model.MmCouponLadderRule `gorm:"foreignKey:CouponID;references:ID" json:"ladders"`
+}
+
+func (c *CouponDao) CouponWithLadder(ids ...int) (*[]CouponLadders, error) {
+	res := &[]CouponLadders{}
+	tx := c.db.Model(&model.MmCoupon{}).
+		Where("id in ? AND status = ?", ids, constants.NormalStatus).
+		Preload("Ladders", "status = ?", constants.NormalStatus).
+		Find(&res)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
 	return res, nil
 }
