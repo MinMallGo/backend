@@ -15,6 +15,7 @@ type MmOrder struct {
 	ID          int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	BatchCode   string `gorm:"column:batch_code;not null;comment:合并下单唯一标识，多个商家下购买可合并下单" json:"batch_code"`                     // 合并下单唯一标识，多个商家下购买可合并下单
 	OrderCode   string `gorm:"column:order_code;not null;comment:订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分" json:"order_code"`    // 订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分
+	OrderType   int32  `gorm:"column:order_type;comment:1. 普通订单 2. 秒杀订单..." json:"order_type"`                                 // 1. 普通订单 2. 秒杀订单...
 	UserID      int64  `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                            // 用户ID
 	TotalAmount int64  `gorm:"column:total_amount;not null;comment:原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。" json:"total_amount"` // 原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。
 	/*

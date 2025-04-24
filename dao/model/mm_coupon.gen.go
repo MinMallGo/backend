@@ -21,21 +21,20 @@ type MmCoupon struct {
 		2. 件数门槛
 	*/
 	ThresholdType    int32     `gorm:"column:threshold_type;comment:1. 金额门槛\n2. 件数门槛" json:"threshold_type"`
-	ThresholdValue   int32     `gorm:"column:threshold_value;comment:金额门槛或者数额门槛" json:"threshold_value"`     // 金额门槛或者数额门槛
-	DiscountType     int32     `gorm:"column:discount_type;comment:1. 满减 2. 打折" json:"discount_type"`        // 1. 满减 2. 打折
-	DiscountValue    int32     `gorm:"column:discount_value;comment:折扣比例：9折 = 90" json:"discount_value"`     // 折扣比例：9折 = 90
-	UserReceiveLimit bool      `gorm:"column:user_receive_limit;comment:是否只能领取一次" json:"user_receive_limit"` // 是否只能领取一次
-	ReceiveStartTime time.Time `gorm:"column:receive_start_time;comment:开始领取时间" json:"receive_start_time"`   // 开始领取时间
-	ReceiveEndTime   time.Time `gorm:"column:receive_end_time;comment:领取结束时间" json:"receive_end_time"`       // 领取结束时间
-	UseStartTime     time.Time `gorm:"column:use_start_time;comment:优惠券开始时间" json:"use_start_time"`          // 优惠券开始时间
-	UseEndTime       time.Time `gorm:"column:use_end_time;comment:优惠券结束时间" json:"use_end_time"`              // 优惠券结束时间
-	TotalCount       int32     `gorm:"column:total_count;comment:优惠券总数" json:"total_count"`                  // 优惠券总数
-	AssginCount      int32     `gorm:"column:assgin_count;comment:已经领取的数量" json:"assgin_count"`              // 已经领取的数量
-	UseCount         int32     `gorm:"column:use_count;comment:已经使用的优惠券数量" json:"use_count"`                 // 已经使用的优惠券数量
+	ThresholdValue   int32     `gorm:"column:threshold_value;comment:金额门槛或者数额门槛" json:"threshold_value"`        // 金额门槛或者数额门槛
+	DiscountType     int32     `gorm:"column:discount_type;comment:1. 满减 2. 打折" json:"discount_type"`           // 1. 满减 2. 打折
+	DiscountValue    int32     `gorm:"column:discount_value;comment:折扣比例：9折 = 90 或者满减金额" json:"discount_value"` // 折扣比例：9折 = 90 或者满减金额
+	UserReceiveLimit bool      `gorm:"column:user_receive_limit;comment:是否只能领取一次" json:"user_receive_limit"`    // 是否只能领取一次
+	ReceiveStartTime time.Time `gorm:"column:receive_start_time;comment:开始领取时间" json:"receive_start_time"`      // 开始领取时间
+	ReceiveEndTime   time.Time `gorm:"column:receive_end_time;comment:领取结束时间" json:"receive_end_time"`          // 领取结束时间
+	UseStartTime     time.Time `gorm:"column:use_start_time;comment:优惠券开始时间" json:"use_start_time"`             // 优惠券开始时间
+	UseEndTime       time.Time `gorm:"column:use_end_time;comment:优惠券结束时间" json:"use_end_time"`                 // 优惠券结束时间
+	TotalCount       int32     `gorm:"column:total_count;comment:优惠券总数" json:"total_count"`                     // 优惠券总数
+	AssginCount      int32     `gorm:"column:assgin_count;comment:已经领取的数量" json:"assgin_count"`                 // 已经领取的数量
+	UseCount         int32     `gorm:"column:use_count;comment:已经使用的优惠券数量" json:"use_count"`                    // 已经使用的优惠券数量
 	Status           bool      `gorm:"column:status;default:1" json:"status"`
 	CreateTime       time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime       time.Time `gorm:"column:update_time" json:"update_time"`
-	DeleteTime       time.Time `gorm:"column:delete_time" json:"delete_time"`
 }
 
 // TableName MmCoupon's table name
