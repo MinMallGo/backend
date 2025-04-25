@@ -8,6 +8,7 @@ import (
 	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/util"
+	"strings"
 	"time"
 )
 
@@ -22,13 +23,11 @@ const (
 	ThresholdUnit   = 2
 )
 
-// `use_range` '使用范围：1 全平台，2商家 3 类别 4 具体商品 5 某个规格',
 const (
-	RangeAll = 1 + iota
-	RangeMerchant
-	RangeCategory
-	RangeSpu
-	RangeSKU
+	CouponPlatform = "PLATFORM"
+	CouponMerchant = "MERCHANT"
+	CouponCategory = "CATEGORY"
+	CouponProduct  = "PRODUCT"
 )
 
 type CouponDao struct {
@@ -138,6 +137,7 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 
 	tx := c.db.Model(&model.MmCoupon{}).
 		Preload("Ladders", "status = ?", constants.NormalStatus).
+		Preload("Scope").
 		Offset((search.Page-1)*search.Size).
 		Limit(search.Size).
 		Where(whereStr, param...).
@@ -164,26 +164,47 @@ func (c *CouponDao) Search(search *dto.CouponSearch) (dto.PaginateCount, error) 
 	return res, nil
 }
 
+type CouponWithScope struct {
+	model.MmCoupon
+	Scope model.MmCouponUsageScope `gorm:"foreignKey:UsageScopeID;references:ID" json:"scope"`
+}
+
 func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 	// 检查优惠券是否可用
-	coupons := &[]model.MmCoupon{}
+	coupons := &[]CouponWithScope{}
 	res := c.db.Model(&model.MmCoupon{}).
+		Preload("Scope").
 		Where("status", true).
 		Where("id in ?", ids).
 		Where("total_count > use_count"). // 没有使用完才能用
-		Distinct("discount_type").
+		Where("use_start_time <= ?", time.Now()). // 检查优惠券是否过期
+		Where("use_end_time >= ?", time.Now()). // 检查优惠券是否过期
 		Find(coupons)
-	if res.Error != nil || res.RowsAffected < int64(len(ids)) {
+	if res.Error != nil {
 		return res.Error
 	}
 
-	distinctCoupon := make(map[int]struct{})
-	for _, coupon := range *coupons {
-		distinctCoupon[int(coupon.DiscountType)] = struct{}{}
-
+	if res.RowsAffected < int64(len(ids)) {
+		return errors.New("请选择正确的优惠券")
 	}
-	if len(distinctCoupon) < len(ids) {
-		return errors.New("同类券不能多次叠加使用")
+
+	distinctCoupon := make(map[int]int)
+	distinctScope := make(map[string]int)
+	for _, coupon := range *coupons {
+		distinctCoupon[int(coupon.DiscountType)]++
+		distinctScope[strings.ToUpper(coupon.Scope.Code)]++
+	}
+	// 只有在针对打折券，才是多张不能一起用，
+	if distinctCoupon[RateType] > 1 {
+		return errors.New("打折券不能叠加使用")
+	}
+
+	// 这里限制一下使用规则吧，最多只能使用两张券// 平台可以与任何券叠加。但是其他的不能两两叠加。
+	dsLen := len(distinctScope)
+	// 最多只能使用两张优惠券，而且必须有一张是平台券才行，否则不能一起用
+
+	if _, ok := distinctScope[CouponPlatform]; !ok && dsLen >= 2 {
+		return errors.New("只有平台券才能和其他券叠加使用")
 	}
 
 	return nil
@@ -285,6 +306,7 @@ func CouponGetByIds(ids []int) (*[]model.MmCoupon, error) {
 type CouponLadders struct {
 	model.MmCoupon
 	Ladders []model.MmCouponLadderRule `gorm:"foreignKey:CouponID;references:ID" json:"ladders"`
+	Scope   model.MmCouponUsageScope   `gorm:"foreignKey:UsageScopeID;references:ID" json:"scope"`
 }
 
 func (c *CouponDao) CouponWithLadder(ids ...int) (*[]CouponLadders, error) {
@@ -292,6 +314,8 @@ func (c *CouponDao) CouponWithLadder(ids ...int) (*[]CouponLadders, error) {
 	tx := c.db.Model(&model.MmCoupon{}).
 		Where("id in ? AND status = ?", ids, constants.NormalStatus).
 		Preload("Ladders", "status = ?", constants.NormalStatus).
+		Preload("Scope").
+		Order("usage_scope_id desc").
 		Find(&res)
 	if tx.Error != nil {
 		return nil, tx.Error
