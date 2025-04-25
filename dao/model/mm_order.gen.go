@@ -37,12 +37,12 @@ type MmOrder struct {
 	PaymentStatus int32 `gorm:"column:payment_status;comment:订单支付状态：\n1. 待支付\n2. 已支付\n3. 部分退款成功\n4. 全额退款成功\n5. 部分申请退款中\n6. 全额申请退款中" json:"payment_status"`
 	/*
 		支付方式：
-		1. 微信支付
-		2. 支付宝支付
+		1. 支付宝支付
+		2. 微信支付
 		3. 银行卡支付
 		...
 	*/
-	PaymentWay int32 `gorm:"column:payment_way;comment:支付方式：\n1. 微信支付 \n2. 支付宝支付 \n3. 银行卡支付\n..." json:"payment_way"`
+	PaymentWay int32 `gorm:"column:payment_way;comment:支付方式：\n1. 支付宝支付 \n2. 微信支付 \n3. 银行卡支付\n..." json:"payment_way"`
 	/*
 		来源：
 		1. 网页
@@ -66,6 +66,7 @@ type MmOrder struct {
 	Status     bool      `gorm:"column:status;default:1;comment:默认启用吧" json:"status"` // 默认启用吧
 	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
+	ExpireTime time.Time `gorm:"column:expire_time;comment:过期时间" json:"expire_time"` // 过期时间
 }
 
 // TableName MmOrder's table name

@@ -12,20 +12,13 @@ const TableNameMmOrderCoupon = "mm_order_coupon"
 
 // MmOrderCoupon  订单-商品表：拆分订单商品具体到每一个规格（和order不同的是，order里面同一个商户的多个商品是一条数据，靠这里的拆分实现细化）
 type MmOrderCoupon struct {
-	ID        int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	OrderID   int32  `gorm:"column:order_id;not null;comment:订单id" json:"order_id"`       // 订单id
-	OrderCode string `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"` // 订单唯一标识
-	CouponID  int32  `gorm:"column:coupon_id;not null;comment:优惠券id" json:"coupon_id"`    // 优惠券id
-	/*
-		1. 金额门槛
-		2. 件数门槛
-	*/
-	ThresholdType  int32     `gorm:"column:threshold_type;comment:1. 金额门槛\n2. 件数门槛" json:"threshold_type"`
-	ThresholdValue int32     `gorm:"column:threshold_value;comment:金额门槛或者数额门槛" json:"threshold_value"` // 金额门槛或者数额门槛
-	DiscountType   int32     `gorm:"column:discount_type;comment:1. 满减 2. 打折" json:"discount_type"`    // 1. 满减 2. 打折
-	DiscountValue  int32     `gorm:"column:discount_value;comment:折扣比例：9折 = 90" json:"discount_value"` // 折扣比例：9折 = 90
-	CreateTime     time.Time `gorm:"column:create_time" json:"create_time"`
-	UpdateTime     time.Time `gorm:"column:update_time" json:"update_time"`
+	ID         int32     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	OrderID    int32     `gorm:"column:order_id;not null;comment:订单id" json:"order_id"`       // 订单id
+	OrderCode  string    `gorm:"column:order_code;not null;comment:订单唯一标识" json:"order_code"` // 订单唯一标识
+	CouponID   int32     `gorm:"column:coupon_id;not null;comment:优惠券id" json:"coupon_id"`    // 优惠券id
+	Context    string    `gorm:"column:context;comment:冗余字段，保存当时用的哪个" json:"context"`         // 冗余字段，保存当时用的哪个
+	CreateTime time.Time `gorm:"column:create_time" json:"create_time"`
+	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 }
 
 // TableName MmOrderCoupon's table name
