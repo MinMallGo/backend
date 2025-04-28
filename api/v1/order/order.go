@@ -13,12 +13,21 @@ func Create(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-	order.OrderCreate(c, param)
+	order.Create(c, param)
 }
 
 func Pay(c *gin.Context) {
 	param := &dto.PayOrder{}
 	if err := c.ShouldBind(param); err != nil {
+		response.Error(c, err)
+		return
+	}
+	order.OrderPay(c, param)
+}
+
+func Pay2(c *gin.Context) {
+	param := &dto.PayOrder{}
+	if err := c.ShouldBindQuery(&param); err != nil {
 		response.Error(c, err)
 		return
 	}

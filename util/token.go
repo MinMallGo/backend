@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	rand2 "math/rand/v2"
+	"time"
 )
 
 // 李少说不要用jwt，改成token和redis存储，方便服务端控制
@@ -47,7 +48,11 @@ func genRandomString(lens int) string {
 }
 
 func OrderCode() string {
-	return "order" + genRandomString(16)
+	return "order" + time.Now().Format("20060102") + genRandomString(16)
+}
+
+func BatchCode() string {
+	return "batch" + time.Now().Format("20060102") + genRandomString(10)
 }
 
 func SubOrderCode() string {

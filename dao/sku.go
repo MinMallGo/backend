@@ -205,12 +205,12 @@ func (d *SkuDao) DecreaseStock(items *[]dto.ShoppingItem) bool {
 	return true
 }
 
-func (d *SkuDao) IncreaseStock(items *[]model.MmSubOrder) error {
+func (d *SkuDao) IncreaseStock(items *[]model.MmOrderSpu) error {
 	incr := make([]StockUpdate, 0, len(*items))
 	for _, item := range *items {
 		incr = append(incr, StockUpdate{
 			ID:  int(item.SkuID),
-			Num: int(item.Nums),
+			Num: int(item.Count),
 		})
 	}
 	err := d.StockIncrease(&incr)
@@ -251,7 +251,7 @@ func (d *SkuDao) StockDecrease(u *[]StockUpdate) error {
 		return tx.Error
 	}
 	if tx.RowsAffected != int64(len(*u)) {
-		return errors.New("商品库存扣减失败")
+		return errors.New("商品库存不足")
 	}
 
 	return nil
@@ -300,7 +300,7 @@ func (d *SkuDao) SecKillUpdate(id int, items *[]dto.SecKillCreate) error {
 	if len(*items) == 0 {
 		return errors.New("更新秒杀活动失败")
 	}
-	
+
 	//  还需要一个前置条件就是，把原来的查询出来，然后进行库存增加操作，再然后才是对库存进行减操作
 	ex := &[]model.MmSeckillProduct{}
 	tx := d.db.Model(&model.MmSeckillProduct{}).Where("seckill_id = ? AND status = ?", id, true).Find(ex)

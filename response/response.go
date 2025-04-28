@@ -53,6 +53,11 @@ func PaginateSuccess(c *gin.Context, count *dto.PaginateCount) {
 	})
 }
 
+func HtmlSuccess(c *gin.Context, data string) {
+	//c.HTML(http.StatusOK, "", data)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(data))
+}
+
 // Failure 失败
 func Failure(c *gin.Context, message string) {
 	c.JSON(http.StatusOK, Response{

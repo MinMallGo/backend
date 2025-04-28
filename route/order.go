@@ -14,4 +14,5 @@ func OrderRegister(r *gin.Engine) {
 		v1.POST("/order/cancel", order.CancelOrder)
 		v1.POST("/order/expire", order.Expire)
 	}
+	r.Group("v1").GET("/order/pay", order.Pay2)
 }

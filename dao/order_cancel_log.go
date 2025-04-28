@@ -19,11 +19,15 @@ func NewOrderCancelDao(db *gorm.DB) *OrderCancelDao {
 
 func (d *OrderCancelDao) Create(order *model.MmOrder, userId int) error {
 	param := &model.MmOrderCancelLog{
-		OrderID:     order.ID,
-		OrderCode:   order.OrderCode,
-		UserID:      int32(userId),
-		CancelPrice: order.FinalPrice,
-		CancelAt:    time.Now(),
+		OrderID:        order.ID,
+		OrderCode:      order.OrderCode,
+		BatchCode:      order.BatchCode,
+		UserID:         int32(userId),
+		CancelAmount:   order.PayAmount,
+		CancelWay:      order.PaymentWay,
+		CancelAt:       time.Now(),
+		ThirdPartyCode: "",
+		PayQueryData:   "",
 	}
 	tx := d.db.Model(&model.MmOrderCancelLog{}).Create(param)
 	if tx.Error != nil || tx.RowsAffected == 0 {

@@ -7,7 +7,6 @@ import (
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
-	"mall_backend/service/order"
 	"mall_backend/util"
 )
 
@@ -209,15 +208,15 @@ func Purchase(c *gin.Context, purchase *dto.ActivePurchase) {
 		return
 	}
 
-	ctx := &order.Context{
-		Param:  purchase,
-		UserID: int(user.ID),
-	}
-	result, err := order.GetStrategy(purchase.Type).Purchase(ctx)
-	if err != nil {
-		response.Error(c, errors.New("参与秒杀活动失败"))
-		return
-	}
-	response.Success(c, result)
-	return
+	//ctx := &order.Context{
+	//	Param:  purchase,
+	//	UserID: int(user.ID),
+	//}
+	//result, err := order.GetStrategy(purchase.Type).CreateOrder(ctx)
+	//if err != nil {
+	//	response.Error(c, errors.New("参与秒杀活动失败"))
+	//	return
+	//}
+	//response.Success(c, result)
+	//return
 }

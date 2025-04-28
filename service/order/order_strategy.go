@@ -2,20 +2,15 @@ package order
 
 import (
 	"errors"
-	"fmt"
 	"gorm.io/gorm"
+	"log"
 	"mall_backend/dao"
 	"mall_backend/dao/model"
 	"mall_backend/dto"
 	"mall_backend/service/coupon"
-	"mall_backend/structure"
 	"mall_backend/util"
+	"strings"
 	"time"
-)
-
-const (
-	NormalOrder = iota
-	SeckillOrder
 )
 
 type Context struct {
@@ -30,35 +25,49 @@ type Result struct {
 }
 
 type Strategy interface {
-	Purchase(ctx *Context) (Result, error)
+	CreateOrder(ctx *Context) (Result, error)
 }
 
 func GetStrategy(orderType int) Strategy {
 	switch orderType {
-	case NormalOrder:
+	case dao.OrderTypeNormal:
 		return &NormalStrategy{}
-	case SeckillOrder:
+	case dao.OrderTypeSecKill:
 		return &SeckillStrategy{}
 	default:
 		panic("not support order")
 	}
 }
 
-type NormalStrategy struct{}
+type NormalStrategy struct {
+	finalPrice int
+	totalPrice int
+	orderCode  string
+	userID     int
+}
 
-func (n *NormalStrategy) Purchase(ctx *Context) (res Result, err error) {
+// 这里下单的时候，同一个商户下的多个商品属于同一个订单
+// 这里直接当成同一个订单。操他妈的多商户。 以后再根据商户id来扩展
+
+func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 	// 断言获取create
 	create, ok := ctx.Param.(*dto.OrderCreate)
 	if !ok {
-		err = errors.New("创建订单失败：assert *dto.OrderCreate fail")
+		err = errors.New("创建订单失败：assert *dto.Create fail")
 		return
 	}
+	n.userID = ctx.UserID
 
 	// 通过查询获取到商品的价格
 	product, err := dao.NewSkuDao(util.DBClient()).MoreWithOrder(&create.Product)
 	if err != nil {
-		err = errors.New("创建订单失败：优惠券检查失败")
+		err = errors.New("创建订单失败：商品检查失败")
 		return
+	}
+
+	idProduct := make(map[int]model.MmSku)
+	for _, sku := range *product {
+		idProduct[int(sku.ID)] = sku
 	}
 
 	// 计算订单总价
@@ -67,97 +76,119 @@ func (n *NormalStrategy) Purchase(ctx *Context) (res Result, err error) {
 		totalPrice += int(item.Price) * ctx.UniqueSku[int(item.ID)]
 	}
 
-	coupons, err := dao.NewCouponDao(util.DBClient()).More(create.Coupons...)
+	couponLadders, err := dao.NewCouponDao(util.DBClient()).CouponWithLadder(create.Coupons...)
 	if err != nil {
 		err = errors.New("创建订单失败：查询优惠券失败")
 		return
 	}
 
-	// 使用策略模式里面的优惠券
-	finalPrice := totalPrice
-	for _, item := range *coupons {
-		tx := structure.Context{
-			Price:    finalPrice,
-			Category: int(item.DiscountType),
-			Rules: structure.Rule{
-				Threshold:     int(item.Threshold),
-				DisCountPrice: int(item.DiscountPrice),
-				DiscountRate:  int(item.DiscountRate),
-			},
+	// 计算数量
+	totalUnit := 0
+	for _, item := range create.Product {
+		totalUnit += item.Num
+	}
+
+	// 写的不是很好，感觉这里还是不需要拆分也挺好？不过真需要改成配置么。算了，没必要；浪费时间
+	// 看优惠券是不是互斥的。  只需要佛reach,如果 > 2 || == 2 但是不是 platform或者其他的
+	if len(*couponLadders) > 0 {
+		couponMap := make(map[string]string)
+		// 看有没有重复不能叠加优惠券
+		for _, item := range *couponLadders {
+			if _, ok := couponMap[item.Scope.Code]; ok {
+				err = errors.New("创建订单失败： 存在重复的优惠券")
+				return
+			}
+			// 这里直接控制是否叠加使用
+			couponMap[item.Scope.Code] = item.Scope.Code
+		}
+		log.Println(couponMap)
+		if len(couponMap) > 2 {
+			err = errors.New("创建订单失败： 多种优惠券不能同时叠加")
+			return
 		}
 
-		if item.UseRange == dao.RangeAll {
+		if len(couponMap) == 2 {
+			// 去平台和商家，取不到就报错
+			if _, ok := couponMap[dao.CouponPlatform]; !ok {
+				err = errors.New("创建订单失败：只有平台券和商家券可以同时叠加")
+				return
+			}
+
+			if _, ok := couponMap[dao.CouponMerchant]; !ok {
+				err = errors.New("创建订单失败：只有平台券和商家券可以同时叠加")
+				return
+			}
+		}
+
+	}
+
+	// 使用策略模式里面的优惠券
+	finalPrice := totalPrice
+	log.Println("使用优惠券之前：", totalPrice)
+	couponCtx := make(map[int]string) // 为了保存优惠券使用记录
+	for _, item := range *couponLadders {
+		tx := coupon.Context{
+			Price: finalPrice,
+			Num:   totalUnit,
+			CL:    item,
+			CM:    couponCtx,
+		}
+		item.Scope.Code = strings.ToUpper(item.Scope.Code)
+
+		if item.Scope.Code == dao.CouponPlatform {
 			strategy := &coupon.PlatformStrategy{}
 			strategy.ApplyStrategy(&tx)
 		}
-		if item.UseRange == dao.RangeMerchant {
+
+		if item.Scope.Code == dao.CouponMerchant {
 			strategy := &coupon.MerchantStrategy{}
 			strategy.ApplyStrategy(&tx)
 		}
 
+		// TODO 分类券
+		if item.Scope.Code == dao.CouponCategory {
+		}
+		// TODO 单个商品券
+		if item.Scope.Code == dao.CouponProduct {
+		}
+
 		finalPrice = tx.Price
 	}
-
+	log.Println("使用优惠券之后：", finalPrice)
 	// 1. 创建订单
 	// 2. 扣减优惠券
 	// 3. 扣减库存
-	// 5. 扣减用户优惠券 // TODO 别想这么多啊，一个优惠券就只能有一次
+	// 5. 扣减用户优惠券
 	//
 
-	couponIds := ""
-	for i, v := range create.Coupons {
-		couponIds += fmt.Sprintf("%d", v)
-		if i < len(create.Coupons)-1 {
-			couponIds += ","
-		}
-	}
-
 	orderCode := util.OrderCode()
+	n.orderCode = orderCode
+	n.finalPrice = finalPrice
+	n.totalPrice = totalPrice
+	// 创建订单
 	orderCreate := &model.MmOrder{
+		BatchCode:     util.BatchCode(),
 		OrderCode:     orderCode,
-		UserID:        int32(ctx.UserID),
-		OriginalPrice: int32(totalPrice),
-		AddressID:     int32(create.AddressID),
-		FinalPrice:    int32(finalPrice),
-		Coupons:       couponIds,
-		PaymentStatus: 0,
+		OrderType:     dao.OrderTypeNormal,
+		UserID:        int64(int32(ctx.UserID)),
+		TotalAmount:   int64(totalPrice),
+		PayAmount:     int64(finalPrice),
+		AddressID:     int64(int32(create.AddressID)),
+		PaymentStatus: dao.OrderStatusNeedPay,
 		PaymentWay:    0,
-		ProcessStatus: dao.OrderNeedPay,
 		Source:        int32(create.Source),
-		IsSign:        0,
+		IsSign:        false,
 		SignDate:      util.MinDateTime(),
+		AfterSale:     0,
 		Status:        true,
 		CreateTime:    time.Now(),
 		UpdateTime:    util.MinDateTime(),
-		DeleteTime:    util.MinDateTime(),
+		ExpireTime:    time.Now().Add(time.Minute * 30),
 	}
-	subOrder := []model.MmSubOrder{}
-	stock := []dao.StockUpdate{}
-	for _, item := range create.Product {
-		subOrder = append(subOrder, model.MmSubOrder{
-			OrderCode:       orderCode,
-			OrderUniqueCode: util.SubOrderCode(),
-			SpuID:           int32(item.SpuID),
-			SkuID:           int32(item.SkuID),
-			Nums:            int32(item.Num),
-			OriginalPrice:   int32(totalPrice),
-			FinalPrice:      int32(finalPrice),
-			AddressID:       int32((*create).AddressID),
-			CouponID:        0,
-			PaymentStatus:   0,
-			PaymentWay:      0,
-			IsSign:          0,
-			SignDate:        util.MinDateTime(),
-			Status:          false,
-			CreateTime:      time.Now(),
-			UpdateTime:      util.MinDateTime(),
-			DeleteTime:      util.MinDateTime(),
-		})
-		stock = append(stock, dao.StockUpdate{
-			ID:  item.SkuID,
-			Num: item.Num,
-		})
-	}
+	// 创建使用的订单
+	orderCoupon := n.orderCoupon(couponCtx)
+	// 拆分商品以及具体的信息到order_spu
+	subOrder := n.orderSpu(create, product)
 
 	orderId := 0
 	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
@@ -165,16 +196,22 @@ func (n *NormalStrategy) Purchase(ctx *Context) (res Result, err error) {
 		if err != nil {
 			return err
 		}
-		if err = dao.NewSubOrderDao(tx).Create(&subOrder); err != nil {
+
+		if err = dao.NewOrderSpuDao(tx).Create(subOrder); err != nil {
 			return err
 		}
 		if err = dao.NewCouponDao(tx).CouponUse(create.Coupons...); err != nil {
 			return err
 		}
-		if err = dao.NewSkuDao(tx).StockDecrease(&stock); err != nil {
+
+		if err = dao.NewOrderCouponDao(tx).Create(orderCoupon); err != nil {
 			return err
 		}
-		if err = dao.NewUserCouponDao(tx).Use(int(ctx.UserID), create.Coupons...); err != nil {
+		// TODO 应该是是支付的时候才扣库存，只有秒杀是创建订单就扣减库存
+		//if err = dao.NewSkuDao(tx).StockDecrease(&stock); err != nil {
+		//	return err
+		//}
+		if err = dao.NewUserCouponDao(tx).Use(ctx.UserID, create.Coupons...); err != nil {
 			return err
 		}
 
@@ -190,91 +227,152 @@ func (n *NormalStrategy) Purchase(ctx *Context) (res Result, err error) {
 	}, nil
 }
 
+// orderSpu 拆分订单的商品到子订单，为啥要这么拆分？因为order是每个商家存的同一个订单
+// order_spu是为了保存明细，以及每个商品的价格之类的
+func (n *NormalStrategy) orderSpu(create *dto.OrderCreate, product *[]model.MmSku) *[]model.MmOrderSpu {
+	idProduct := make(map[int]model.MmSku)
+	for _, sku := range *product {
+		idProduct[int(sku.ID)] = sku
+	}
+	var subOrder []model.MmOrderSpu
+	//stock := []dao.StockUpdate{}
+	skuPayAmount := make(map[int]int64)
+	var tmpSum int64
+	for i, item := range create.Product {
+		if i < len(create.Product)-1 {
+			tmp := int64((item.Num) * int(idProduct[item.SkuID].Price) * n.finalPrice / n.totalPrice)
+			skuPayAmount[item.SkuID] = tmp
+			tmpSum += tmp
+			continue
+		}
+		skuPayAmount[item.SkuID] = int64(n.finalPrice) - tmpSum
+	}
+
+	for _, item := range create.Product {
+		subOrder = append(subOrder, model.MmOrderSpu{
+			OrderCode:     n.orderCode,
+			UserID:        int32(n.userID),
+			SpuID:         int64(item.SpuID),
+			SkuID:         int64(item.SkuID),
+			UnitAmount:    int64(idProduct[item.SkuID].Price),
+			Count:         int32(item.Num),
+			PaymentStatus: dao.OrderStatusNeedPay,
+			PaymentWay:    0,
+			TotalAmount:   int64((item.Num) * int(idProduct[item.SkuID].Price)),
+			PayAmount:     skuPayAmount[item.SkuID], // 当前商品 * 数量 * 优惠后的价格 / 总价
+			RefundAmount:  0,
+			Specs:         idProduct[item.SkuID].Spces,
+			IsSign:        0,
+			SignDate:      util.MinDateTime(),
+			Status:        true,
+			CreateTime:    time.Now(),
+			UpdateTime:    util.MinDateTime(),
+		})
+	}
+	return &subOrder
+}
+
+// orderCoupon 保存用户使用的优惠券  TODO 这里好像有点问题吗
+func (n *NormalStrategy) orderCoupon(ladder map[int]string) *[]model.MmOrderCoupon {
+	orderCoupon := make([]model.MmOrderCoupon, 0, len(ladder))
+	for id, item := range ladder {
+		orderCoupon = append(orderCoupon, model.MmOrderCoupon{
+			OrderID:    0,
+			OrderCode:  n.orderCode,
+			CouponID:   int32(id),
+			Context:    item,
+			CreateTime: time.Now(),
+			UpdateTime: util.MinDateTime(),
+		})
+	}
+	return &orderCoupon
+}
+
 type SeckillStrategy struct{}
 
-func (s *SeckillStrategy) Purchase(ctx *Context) (res Result, err error) {
-	// 1. 查询当前秒杀的商品的价格
-	// 1. 创建普通订单
-	// 2. 修改秒杀表商品的库存
-	// 3. 写入参与秒杀日志表
-	// 4.
-	purchase, ok := ctx.Param.(*dto.ActivePurchase)
-	if !ok {
-		return res, errors.New("参与秒杀失败：assert *dto.ActivePurchase failed")
-	}
-
-	seckillID, err := dao.NewSecKillDao(util.DBClient()).GetID(purchase.ActiveID)
-	if err != nil {
-		return res, errors.New("参与秒杀失败：请检查活动是否存在")
-	}
-
-	price, err := dao.NewSecKillProductDao(util.DBClient()).Price(purchase.SeckillID, purchase.Product.SkuID)
-
-	orderCode := util.OrderCode()
-	orderCreate := &model.MmOrder{
-		OrderCode:     orderCode,
-		UserID:        int32(ctx.UserID),
-		OriginalPrice: int32(price),
-		AddressID:     int32(purchase.AddressID),
-		Coupons:       "",
-		FinalPrice:    int32(price),
-		PaymentStatus: 0,
-		PaymentWay:    0,
-		Source:        int32(purchase.Source),
-		IsSign:        0,
-		ProcessStatus: dao.OrderNeedPay,
-		SignDate:      util.MinDateTime(),
-		Status:        true,
-		CreateTime:    time.Now(),
-		UpdateTime:    util.MinDateTime(),
-		DeleteTime:    util.MinDateTime(),
-	}
-	subOrder := []model.MmSubOrder{{
-		OrderCode:       orderCode,
-		OrderUniqueCode: util.SubOrderCode(),
-		SpuID:           int32(purchase.Product.SpuID),
-		SkuID:           int32(purchase.Product.SkuID),
-		Nums:            1,
-		OriginalPrice:   int32(price),
-		FinalPrice:      int32(price),
-		AddressID:       int32(purchase.AddressID),
-		CouponID:        0,
-		PaymentStatus:   0,
-		PaymentWay:      0,
-		IsSign:          0,
-		SignDate:        util.MinDateTime(),
-		Status:          false,
-		CreateTime:      time.Now(),
-		UpdateTime:      util.MinDateTime(),
-		DeleteTime:      util.MinDateTime(),
-	}}
-
-	var orderId int
-	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
-		orderId, err = dao.NewOrderDao(tx).Create(orderCreate)
-		if err != nil {
-			return err
-		}
-		if err = dao.NewSubOrderDao(tx).Create(&subOrder); err != nil {
-			return err
-		}
-
-		if err = dao.NewSecKillProductDao(tx).DecrStock(seckillID, purchase.Product.SkuID); err != nil {
-			return err
-		}
-
-		if err = dao.NewSeckillLog(tx).Create(ctx.UserID, purchase); err != nil {
-			return err
-		}
-
-		return nil
-	})
-	if err != nil {
-		return res, err
-	}
-
+func (s *SeckillStrategy) CreateOrder(ctx *Context) (res Result, err error) {
+	//	// 1. 查询当前秒杀的商品的价格
+	//	// 1. 创建普通订单
+	//	// 2. 修改秒杀表商品的库存
+	//	// 3. 写入参与秒杀日志表
+	//	// 4.
+	//	purchase, ok := ctx.Param.(*dto.ActivePurchase)
+	//	if !ok {
+	//		return res, errors.New("参与秒杀失败：assert *dto.ActivePurchase failed")
+	//	}
+	//
+	//	seckillID, err := dao.NewSecKillDao(util.DBClient()).GetID(purchase.ActiveID)
+	//	if err != nil {
+	//		return res, errors.New("参与秒杀失败：请检查活动是否存在")
+	//	}
+	//
+	//	price, err := dao.NewSecKillProductDao(util.DBClient()).Price(purchase.SeckillID, purchase.Product.SkuID)
+	//
+	//	orderCode := util.OrderCode()
+	//	orderCreate := &model.MmOrder{
+	//		OrderCode:     orderCode,
+	//		UserID:        int32(ctx.UserID),
+	//		OriginalPrice: int32(price),
+	//		AddressID:     int32(purchase.AddressID),
+	//		Coupons:       "",
+	//		FinalPrice:    int32(price),
+	//		PaymentStatus: 0,
+	//		PaymentWay:    0,
+	//		Source:        int32(purchase.Source),
+	//		IsSign:        0,
+	//		ProcessStatus: dao.OrderNeedPay,
+	//		SignDate:      util.MinDateTime(),
+	//		Status:        true,
+	//		CreateTime:    time.Now(),
+	//		UpdateTime:    util.MinDateTime(),
+	//		DeleteTime:    util.MinDateTime(),
+	//	}
+	//	subOrder := []model.MmSubOrder{{
+	//		OrderCode:       orderCode,
+	//		OrderUniqueCode: util.SubOrderCode(),
+	//		SpuID:           int32(purchase.Product.SpuID),
+	//		SkuID:           int32(purchase.Product.SkuID),
+	//		Nums:            1,
+	//		OriginalPrice:   int32(price),
+	//		FinalPrice:      int32(price),
+	//		AddressID:       int32(purchase.AddressID),
+	//		CouponID:        0,
+	//		PaymentStatus:   0,
+	//		PaymentWay:      0,
+	//		IsSign:          0,
+	//		SignDate:        util.MinDateTime(),
+	//		Status:          false,
+	//		CreateTime:      time.Now(),
+	//		UpdateTime:      util.MinDateTime(),
+	//		DeleteTime:      util.MinDateTime(),
+	//	}}
+	//
+	//	var orderId int
+	//	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
+	//		orderId, err = dao.NewOrderDao(tx).Create(orderCreate)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		if err = dao.NewSubOrderDao(tx).Create(&subOrder); err != nil {
+	//			return err
+	//		}
+	//
+	//		if err = dao.NewSecKillProductDao(tx).DecrStock(seckillID, purchase.Product.SkuID); err != nil {
+	//			return err
+	//		}
+	//
+	//		if err = dao.NewSeckillLog(tx).Create(ctx.UserID, purchase); err != nil {
+	//			return err
+	//		}
+	//
+	//		return nil
+	//	})
+	//	if err != nil {
+	//		return res, err
+	//	}
+	//
 	return Result{
-		ID:   orderId,
-		Code: orderCode,
+		ID:   0,
+		Code: "",
 	}, nil
 }

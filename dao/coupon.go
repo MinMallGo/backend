@@ -176,9 +176,9 @@ func (c *CouponDao) ExistsWithUser(userId int, ids ...int) error {
 		Preload("Scope").
 		Where("status", true).
 		Where("id in ?", ids).
-		Where("total_count > use_count"). // 没有使用完才能用
+		Where("total_count > use_count").         // 没有使用完才能用
 		Where("use_start_time <= ?", time.Now()). // 检查优惠券是否过期
-		Where("use_end_time >= ?", time.Now()). // 检查优惠券是否过期
+		Where("use_end_time >= ?", time.Now()).   // 检查优惠券是否过期
 		Find(coupons)
 	if res.Error != nil {
 		return res.Error
