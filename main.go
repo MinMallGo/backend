@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"mall_backend/middleware"
 	routes "mall_backend/route"
+	"mall_backend/service/queue"
 	"mall_backend/util"
 )
 
@@ -44,4 +45,7 @@ func initNecessary() {
 
 	// 注册自定义验证规则
 	util.ValidatorRegister()
+
+	// 启动支付订单过期扫描订单
+	queue.OrderExpireQueue()
 }

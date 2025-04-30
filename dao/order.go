@@ -84,8 +84,8 @@ func (u *OrderDao) IsPaid(order *dto.CancelOrder, userId int) (*model.MmOrder, e
 		Clauses(clause.Locking{
 			Strength: "UPDATE",
 		}).
-		Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ? AND process_status = ?",
-			order.ID, order.OrderCode, userId, true, OrderStatusPaid).
+		Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ?",
+			order.ID, order.OrderCode, userId, OrderStatusPaid).
 		First(res)
 	if tx.Error != nil || tx.RowsAffected == 0 {
 		return res, errors.New("退款失败：请选择正确的订单")
@@ -94,24 +94,25 @@ func (u *OrderDao) IsPaid(order *dto.CancelOrder, userId int) (*model.MmOrder, e
 }
 
 func (u *OrderDao) Cancel(order *dto.CancelOrder, userId int) error {
-	res := u.db.Model(&model.MmOrder{}).Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ? AND process_status = ?",
-		order.ID, order.OrderCode, userId, true, OrderStatusPaid).Updates(map[string]interface{}{
-		"payment_status": false,
-		//"process_status": OrderCommitCancel,
-		"update_time": time.Now(),
-	})
-	if res.Error != nil || res.RowsAffected == 0 {
-		return errors.New("订单取消失败：更新主订单失败")
-	}
+	//res := u.db.Model(&model.MmOrder{}).Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ?",
+	//	order.ID, order.OrderCode, userId, OrderStatusPaid).Updates(map[string]interface{}{
+	//	"payment_status": false,
+	//	//"process_status": OrderCommitCancel,
+	//	"update_time": time.Now(),
+	//})
+	//if res.Error != nil || res.RowsAffected == 0 {
+	//	return errors.New("订单取消失败：更新主订单失败")
+	//}
+	// TODO 这里要重写退货这个东西
+
 	return nil
 }
 
-func (u *OrderDao) Expire(order *dto.OrderExpire, userId int) error {
-	res := u.db.Model(&model.MmOrder{}).Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ? AND process_status = ?",
-		order.ID, order.OrderCode, userId, false, OrderStatusNeedPay).Updates(map[string]interface{}{
+func (u *OrderDao) Expire(orderCode string) error {
+	res := u.db.Model(&model.MmOrder{}).Where("order_code = ? AND payment_status = ?",
+		orderCode, false, OrderStatusNeedPay).Updates(map[string]interface{}{
 		"payment_status": false,
-		//"process_status": OrderExpired,
-		"update_time": time.Now(),
+		"update_time":    time.Now(),
 	})
 	if res.Error != nil || res.RowsAffected == 0 {
 		return errors.New("订单过期失败：更新主订单失败")
@@ -119,9 +120,34 @@ func (u *OrderDao) Expire(order *dto.OrderExpire, userId int) error {
 	return nil
 }
 
-func (u *OrderDao) One(orderCode string, id int) (*model.MmOrder, error) {
+// IsExpire 订单少于5秒钟不让支付
+func (u *OrderDao) IsExpire(orderCode string) error {
 	res := &model.MmOrder{}
-	tx := u.db.Model(&model.MmOrder{}).Where("id = ? AND order_code = ?", id, orderCode).Find(res)
+	tx := u.db.Model(&model.MmOrder{}).Where("order_code = ? AND payment_status = ? AND expire_time < ?",
+		orderCode, OrderStatusNeedPay, time.Now()).
+		Find(res)
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if tx.RowsAffected == 0 {
+		return errors.New("订单支付提交异常")
+	}
+
+	if res.PaymentStatus >= OrderStatusPaid {
+		return errors.New("订单已中支付，请勿重复提交")
+	}
+
+	if time.Now().After(res.ExpireTime.Add(-3 * time.Second)) {
+		return errors.New("订单已过期")
+	}
+
+	return nil
+}
+
+func (u *OrderDao) One(orderCode string) (*model.MmOrder, error) {
+	res := &model.MmOrder{}
+	tx := u.db.Model(&model.MmOrder{}).Where("order_code = ? AND status = ?", orderCode, true).Find(res)
 	if tx.Error != nil || tx.RowsAffected == 0 {
 		return res, tx.Error
 	}

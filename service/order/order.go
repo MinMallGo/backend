@@ -1,9 +1,11 @@
 package order
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"io"
 	"mall_backend/dao"
@@ -13,6 +15,7 @@ import (
 	"mall_backend/util"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // TODO 这里创建订单和下单需要两个步骤，先创建订单，然后才是订单支付。先不要考虑那么精细化
@@ -87,11 +90,61 @@ func Create(c *gin.Context, create *dto.OrderCreate) {
 	return
 }
 
-func OrderPay(c *gin.Context, order *dto.PayOrder) {
-	//// TODO 这里是支付订单，看有没有第三方的对接
-	//// TODO 这里是消息通知  可能需要拆分。先弄个邮件发送得了
-	//// TODO
-	//// TODO 检查并支付  直接用事务吧
+// OrderSetNx 对某个订单进行加锁，以免订单被重复/多次支付
+func OrderSetNx(lockName string, acquireTimeout, expireTime time.Duration) error {
+	endTime := time.Now().Add(acquireTimeout)
+	for time.Now().Before(endTime) {
+		result, err := util.CacheClient().SetNX(context.Background(), lockName, "lock", expireTime).Result()
+		if err != nil {
+			return errors.New("订单支付：无法获取订单的锁，稍后重试。")
+		}
+		if result {
+			return nil
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+	return errors.New("订单支付：无法获取订单的锁，稍后重试。")
+}
+
+// Pay 需要考虑支付成功以及支付失败，支付超时这三种可能行
+//
+//	使用zSet保存支付的order_code，避免多次重复发起支付请求。
+//
+// 1. 为什么要用zSet来保存？1. 他是个他是个有序的集合，然后里面的成员不能重复。然后我我这里根据过期时间设置他的权重。然后通过定时任务去让他过期
+// 2. 需要用定时任务是扫，然后去掉过期的。避免阻塞正常下单业务流程
+// TODO 这里好像会有问题，因为这里是返回一个html页面，如果这个页面被意外关闭，这里应该怎么来返回一个支付的页面呢
+// TODO 真需要就加一个justPay的页面，先不管
+func Pay(c *gin.Context, order *dto.PayOrder) {
+	var err error
+
+	// 1. 查询订单是否过期
+	err = dao.NewOrderDao(util.DBClient()).IsExpire(order.OrderCode)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	// 使用分布式锁进行锁订单，获取到锁才行执行下面的步骤
+	err = OrderSetNx(util.OrderSetNXLockName(order.OrderCode), util.OrderTTL(), util.OrderTTL())
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	// 通过查询zSet中的订单号是否存在来判断是否能否继续走面的支付流程
+	// 1. 错误则返回错误，error.Is(err,redis.Nil) 这里需要忽略，因为是没找到
+	// 2. 如果权重（score）大于0说明正在支付中
+	score, err := util.CacheClient().ZRank(context.TODO(), util.OrderPayWaitKey(), order.OrderCode).Result()
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if score >= 0 {
+		response.Failure(c, "订单正在支付中请稍后再试")
+		return
+	}
+
 	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
 	if err != nil {
 		response.Error(c, err)
@@ -117,25 +170,31 @@ func OrderPay(c *gin.Context, order *dto.PayOrder) {
 			})
 		}
 
+		// 库存扣减
 		err = dao.NewSkuDao(tx).StockDecrease(&stock)
 		if err != nil {
 			return err
 		}
 
-		// 检查库存，支付的时候锁库存
-
-		// TODO 支付对接
-		// TODO 消息通知
-
 		// 这里只是发起支付，还没支付成功，所以不需要更改订单状态。可以在redis里面锁定这个订单的支付状态
 		aliPayStr := ""
-		aliPayStr, aliPayBody, err = HandleAliPcPay(order, orderRes.PayAmount, "Iphone6 16G")
-		if err != nil {
+		aliPayStr, aliPayBody, err = HandleAliPcPay(order, orderRes.PayAmount, fmt.Sprintf("min_mall:%s", orderRes.SubjectTitle))
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return err
 		}
 		if err = dao.NewOrderPayLogDao(tx).Create(more, aliPayStr); err != nil {
 			return err
 		}
+
+		// 这里创建订单失败正常的，
+		_, err = util.CacheClient().ZAdd(context.TODO(), util.OrderPayWaitKey(), redis.Z{
+			Score:  float64(util.OrderExpireTime()),
+			Member: order.OrderCode,
+		}).Result()
+		if err != nil {
+			return err
+		}
+
 		// 更新订单的状态
 		return nil
 	}); err != nil {
@@ -144,7 +203,6 @@ func OrderPay(c *gin.Context, order *dto.PayOrder) {
 	}
 
 	response.HtmlSuccess(c, string(aliPayBody))
-	//response.Success(c, []string{})
 	return
 }
 
@@ -221,72 +279,25 @@ func CancelOrder(c *gin.Context, order *dto.CancelOrder) {
 	//return
 }
 
-func OrderExpire(c *gin.Context, order *dto.OrderExpire) {
-	//user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
-	//if err != nil {
-	//	response.Error(c, err)
-	//	return
-	//}
-	//
-	//// 1.归还库存，
-	//// 2.这玩意儿
-	//// 取消订单的步骤：
-	//// 1. 查看订单是否支付。 IsPaid
-	//// 2. 归还库存
-	//// 3. 归还优惠券
-	//// 4. 归还用户优惠券
-	//// 5.  TODO 如果支付了的话，要走退款流程
-	//// 6. 更改订单状态
-	//err = util.DBClient().Transaction(func(tx *gorm.DB) error {
-	//	// 通过主订单查询子订单，并修改子订单的状态以及归还商品库存
-	//	subOrders, err := dao.NewOrderSpuDao(tx).More(order.OrderCode)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// 归还商品库存
-	//	if err = dao.NewSkuDao(tx).IncreaseStock(subOrders); err != nil {
-	//		return err
-	//	}
-	//	// 修改子订单状态
-	//	if err = dao.NewOrderSpuDao(tx).Cancel(order.OrderCode); err != nil {
-	//		return err
-	//	}
-	//	// 修改主订单状态
-	//	if err = dao.NewOrderDao(tx).Expire(order, int(user.ID)); err != nil {
-	//		return err
-	//	}
-	//	// 1. 归还优惠券
-	//	// 2. 归还用户优惠券
-	//	res, err := dao.NewOrderDao(tx).One(order.OrderCode, order.ID)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	if len(res.Coupons) > 0 {
-	//		tmp := strings.Split(res.Coupons, ",")
-	//		ids := make([]int, 0, len(tmp))
-	//		for _, couponId := range tmp {
-	//			id, err := strconv.Atoi(couponId)
-	//			if err != nil {
-	//				return errors.New("归还优惠券失败，请联系客服")
-	//			}
-	//			ids = append(ids, id)
-	//		}
-	//		if err = dao.NewCouponDao(tx).Cancel(ids...); err != nil {
-	//			return err
-	//		}
-	//		if err = dao.NewUserCouponDao(tx).Cancel(int(user.ID), ids...); err != nil {
-	//			return err
-	//		}
-	//	}
-	//	return nil
-	//})
-	//if err != nil {
-	//	response.Error(c, err)
-	//	return
-	//}
-	//response.Success(c, []string{})
-	//return
+// Expire 这里来的都是过期的订单并且创建了支付请求的订单，如果过期了说明支付也过期了。需要归还库存
+func Expire(orderCode string) error {
+	//  订单过期，主要是看有没有支付，如果支付了就直接返回
+	//  如果发起了支付但是没有支付就要归还库存
+	//  怎么查看有没有发起支付？在zSet里面进行查询，如果支付了就存在，如果不存在说明已经支付成功，要么就是没支付但是需要过期了。因为当你下单的时候会同时调用pay接口，所以就要么还没支付
+	order, err := dao.NewOrderDao(util.DBClient()).One(orderCode)
+	if err != nil || order.ID == 0 {
+		return err
+	}
+
+	// 如果支付状态大于当前状态为已支付就不管他
+	if order.PaymentStatus >= dao.OrderStatusPaid {
+		return nil
+	}
+	err = GetStrategy(int(order.OrderType)).orderExpire()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // HandleAliPcPay 创建支付宝网页端支付的页面

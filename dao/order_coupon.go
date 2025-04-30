@@ -24,3 +24,12 @@ func (d *OrderCouponDao) Create(coupon *[]model.MmOrderCoupon) error {
 	}
 	return nil
 }
+
+func (d *OrderCouponDao) More(orderCode string) (res *[]model.MmOrderCoupon, err error) {
+	tx := d.db.Model(&model.MmOrderCoupon{}).Where("order_code = ?", orderCode).Find(res)
+	if tx.Error != nil {
+		return
+	}
+
+	return
+}
