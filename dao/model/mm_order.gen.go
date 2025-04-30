@@ -12,12 +12,13 @@ const TableNameMmOrder = "mm_order"
 
 // MmOrder 订单表：拆分成订单商品表，订单优惠券表
 type MmOrder struct {
-	ID          int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	BatchCode   string `gorm:"column:batch_code;not null;comment:合并下单唯一标识，多个商家下购买可合并下单" json:"batch_code"`                     // 合并下单唯一标识，多个商家下购买可合并下单
-	OrderCode   string `gorm:"column:order_code;not null;comment:订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分" json:"order_code"`    // 订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分
-	OrderType   int32  `gorm:"column:order_type;comment:1. 普通订单 2. 秒杀订单..." json:"order_type"`                                 // 1. 普通订单 2. 秒杀订单...
-	UserID      int64  `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                            // 用户ID
-	TotalAmount int64  `gorm:"column:total_amount;not null;comment:原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。" json:"total_amount"` // 原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。
+	ID           int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	BatchCode    string `gorm:"column:batch_code;not null;comment:合并下单唯一标识，多个商家下购买可合并下单" json:"batch_code"`                     // 合并下单唯一标识，多个商家下购买可合并下单
+	OrderCode    string `gorm:"column:order_code;not null;comment:订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分" json:"order_code"`    // 订单唯一标识。同一个商家下买，合并成一个订单，在mm_order_spu拆分
+	OrderType    int32  `gorm:"column:order_type;comment:1. 普通订单 2. 秒杀订单..." json:"order_type"`                                 // 1. 普通订单 2. 秒杀订单...
+	UserID       int64  `gorm:"column:user_id;not null;comment:用户ID" json:"user_id"`                                            // 用户ID
+	SubjectTitle string `gorm:"column:subject_title;comment:商品名称" json:"subject_title"`                                         // 商品名称
+	TotalAmount  int64  `gorm:"column:total_amount;not null;comment:原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。" json:"total_amount"` // 原价 * 100。本来应该支付的价格。这里是order_spu单价*数量。
 	/*
 		实际支付价格 * 100，注意的是这里算是每个对应的order_spu对应折扣后的价格之和。
 
