@@ -137,12 +137,13 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 	//
 
 	orderCode := util.OrderCode()
+	batchCode := util.BatchCode()
 	n.orderCode = orderCode
 	n.finalPrice = finalPrice
 	n.totalPrice = totalPrice
 	// 创建订单
 	orderCreate := &model.MmOrder{
-		BatchCode:     util.BatchCode(),
+		BatchCode:     batchCode,
 		OrderCode:     orderCode,
 		OrderType:     dao.OrderTypeNormal,
 		UserID:        int64(int32(ctx.UserID)),
@@ -197,8 +198,9 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 	}
 
 	return Result{
-		ID:   orderId,
-		Code: orderCode,
+		ID:        orderId,
+		Code:      orderCode,
+		BatchCode: batchCode,
 	}, nil
 }
 
@@ -264,7 +266,8 @@ func (n *NormalStrategy) orderCoupon(ladder map[int]string) *[]model.MmOrderCoup
 }
 
 // 仅仅使用订单号进行过期处理
-func (n *NormalStrategy) orderExpire() error {
+func (n *NormalStrategy) orderExpire(orderCode string) error {
+	n.orderCode = orderCode
 	err := util.DBClient().Transaction(func(tx *gorm.DB) error {
 		order, err := dao.NewOrderDao(util.DBClient()).One(n.orderCode)
 		if err != nil {
@@ -272,11 +275,6 @@ func (n *NormalStrategy) orderExpire() error {
 		}
 
 		orderSku, err := dao.NewOrderSpuDao(util.DBClient()).More(n.orderCode)
-		if err != nil {
-			return err
-		}
-
-		orderCoupon, err := dao.NewOrderCouponDao(util.DBClient()).More(n.orderCode)
 		if err != nil {
 			return err
 		}
@@ -294,14 +292,21 @@ func (n *NormalStrategy) orderExpire() error {
 			return errors.Join(errors.New(fmt.Sprintf("订单号：%s归还库存失败：", n.orderCode)), err)
 		}
 
-		// 2. 归还用户优惠券
-		coupons := make([]int, 0, len(*orderCoupon))
-		for _, item := range *orderCoupon {
-			coupons = append(coupons, int(item.CouponID))
-		}
-		err = dao.NewUserCouponDao(tx).Cancel(int(order.UserID), coupons...)
+		orderCoupon, err := dao.NewOrderCouponDao(util.DBClient()).More(n.orderCode)
 		if err != nil {
-			return errors.Join(errors.New(fmt.Sprintf("订单号：%s归还库存失败：", n.orderCode)), err)
+			return err
+		}
+		if orderCoupon != nil && len(*orderCoupon) > 0 {
+			log.Printf("%#v", orderCoupon)
+			// 2. 归还用户优惠券
+			coupons := make([]int, 0, len(*orderCoupon))
+			for _, item := range *orderCoupon {
+				coupons = append(coupons, int(item.CouponID))
+			}
+			err = dao.NewUserCouponDao(tx).Cancel(int(order.UserID), coupons...)
+			if err != nil {
+				return errors.Join(errors.New(fmt.Sprintf("订单号：%s归还优惠券失败：", n.orderCode)), err)
+			}
 		}
 
 		return nil

@@ -42,10 +42,10 @@ func initNecessary() {
 	if _, err := util.RedisInstance(); err != nil {
 		panic(err)
 	}
-
+	// 启动支付订单过期扫描订单
+	go queue.OrderExpireQueue()
+	// 启动同步查询订单是否支付
+	go queue.OrderPayQueue()
 	// 注册自定义验证规则
 	util.ValidatorRegister()
-
-	// 启动支付订单过期扫描订单
-	queue.OrderExpireQueue()
 }

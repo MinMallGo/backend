@@ -10,9 +10,9 @@ func OrderPayWaitKey() string {
 	return "order_pay_wait"
 }
 
-// OrderExpireTime 获取订单过期时间。通过设置zset的权重移除
+// OrderExpireTime 获取订单过期时间。通过设置zSet的权重移除
 func OrderExpireTime() int64 {
-	return time.Now().Add(OrderTTL()).Unix()
+	return time.Now().Add(-OrderTTL()).Unix()
 }
 
 // OrderSetNXLockName 通过订单code统一管理锁，免得手写容易出问题

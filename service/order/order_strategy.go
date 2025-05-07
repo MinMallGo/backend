@@ -11,13 +11,14 @@ type Context struct {
 }
 
 type Result struct {
-	ID   int
-	Code string
+	ID        int
+	Code      string
+	BatchCode string
 }
 
 type Strategy interface {
 	CreateOrder(ctx *Context) (Result, error)
-	orderExpire() error
+	orderExpire(string) error
 }
 
 func GetStrategy(orderType int) Strategy {

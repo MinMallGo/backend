@@ -272,7 +272,7 @@ func (d *SkuDao) StockIncrease(u *[]StockUpdate) error {
 		}
 	}
 	sql := `UPDATE mm_sku SET stock = CASE %s END WHERE id IN (%s) `
-	res := &model.MmSku{}
+	res := model.MmSku{}
 	tx := d.db.Raw(fmt.Sprintf(sql, when, idx)).Scan(res)
 	if tx.Error != nil {
 		return tx.Error

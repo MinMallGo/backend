@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"io"
+	"log"
 	"mall_backend/dao"
 	"mall_backend/dto"
 	"mall_backend/response"
@@ -106,6 +107,11 @@ func OrderSetNx(lockName string, acquireTimeout, expireTime time.Duration) error
 	return errors.New("订单支付：无法获取订单的锁，稍后重试。")
 }
 
+// OrderReleaseLock 释放订单锁
+func OrderReleaseLock(lockName string) error {
+	return util.CacheClient().Del(context.Background(), lockName).Err()
+}
+
 // Pay 需要考虑支付成功以及支付失败，支付超时这三种可能行
 //
 //	使用zSet保存支付的order_code，避免多次重复发起支付请求。
@@ -131,16 +137,25 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		return
 	}
 
+	defer func() {
+		err := OrderReleaseLock(util.OrderSetNXLockName(order.OrderCode))
+		if err != nil {
+			// 记录日志，处理释放锁失败的情况
+			log.Println("订单支付释放锁失败")
+		}
+	}()
+
 	// 通过查询zSet中的订单号是否存在来判断是否能否继续走面的支付流程
 	// 1. 错误则返回错误，error.Is(err,redis.Nil) 这里需要忽略，因为是没找到
 	// 2. 如果权重（score）大于0说明正在支付中
 	score, err := util.CacheClient().ZRank(context.TODO(), util.OrderPayWaitKey(), order.OrderCode).Result()
-	if err != nil {
+
+	if err != nil && !errors.Is(err, redis.Nil) {
 		response.Error(c, err)
 		return
 	}
-
-	if score >= 0 {
+	log.Println(score)
+	if score > time.Now().Add(-util.OrderTTL()).Unix() {
 		response.Failure(c, "订单正在支付中请稍后再试")
 		return
 	}
@@ -152,6 +167,7 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 	}
 
 	var aliPayBody []byte
+	aliPayStr := ""
 	if err = util.DBClient().Transaction(func(tx *gorm.DB) error {
 		orderRes, err := dao.NewOrderDao(tx).CheckBeforePay(order, int(user.ID))
 		if err != nil {
@@ -177,7 +193,7 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		}
 
 		// 这里只是发起支付，还没支付成功，所以不需要更改订单状态。可以在redis里面锁定这个订单的支付状态
-		aliPayStr := ""
+
 		aliPayStr, aliPayBody, err = HandleAliPcPay(order, orderRes.PayAmount, fmt.Sprintf("min_mall:%s", orderRes.SubjectTitle))
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return err
@@ -188,7 +204,7 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 
 		// 这里创建订单失败正常的，
 		_, err = util.CacheClient().ZAdd(context.TODO(), util.OrderPayWaitKey(), redis.Z{
-			Score:  float64(util.OrderExpireTime()),
+			Score:  float64(time.Now().Add(util.OrderTTL()).Unix()),
 			Member: order.OrderCode,
 		}).Result()
 		if err != nil {
@@ -201,9 +217,9 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		response.Error(c, err)
 		return
 	}
-
-	response.HtmlSuccess(c, string(aliPayBody))
+	response.Success(c, map[string]string{"url": aliPayStr})
 	return
+	response.HtmlSuccess(c, string(aliPayBody))
 }
 
 func CancelOrder(c *gin.Context, order *dto.CancelOrder) {
@@ -293,7 +309,7 @@ func Expire(orderCode string) error {
 	if order.PaymentStatus >= dao.OrderStatusPaid {
 		return nil
 	}
-	err = GetStrategy(int(order.OrderType)).orderExpire()
+	err = GetStrategy(int(order.OrderType)).orderExpire(orderCode)
 	if err != nil {
 		return err
 	}
@@ -327,4 +343,53 @@ func HandleAliPcPay(order *dto.PayOrder, amount int64, subject string) (reqStr s
 	}
 	bodyStr = body
 	return
+}
+
+// PaySuccess 订单支付完成之后，对主订单，子订单，支付记录进行成功操作
+func PaySuccess(orderCode string) error {
+	// 订单支付成功之后的逻辑处理
+	// 1. 先检查订单是否存在
+	// 2. 查看订单是否已经完成了修改，这里看需不需要给支付宝给个回调表示已经收到了
+	// 3. 写入order_pay_log里面
+	// 4. 修改order的支付状态
+	// 5. 修改order_spu的状态
+
+	err := util.DBClient().Transaction(func(tx *gorm.DB) error {
+		isPaid, err := dao.NewOrderDao(tx).IsPaid(orderCode)
+		if err != nil {
+			return err
+		}
+
+		if !isPaid {
+			return errors.New("order not found")
+		}
+		// 修改主订单状态
+		err = dao.NewOrderDao(tx).PaySuccess(orderCode)
+		if err != nil {
+			return err
+		}
+		// 修改子订单状态
+		err = dao.NewOrderSpuDao(tx).PaySuccess(orderCode)
+		if err != nil {
+			return err
+		}
+		// 修改订单支付记录的状态
+		err = dao.NewOrderPayLogDao(tx).PaySuccess(orderCode)
+		if err != nil {
+			return err
+		}
+
+		_, err = util.CacheClient().ZRem(context.TODO(), util.OrderPayWaitKey(), orderCode).Result()
+		if err != nil {
+			return errors.New(fmt.Sprintf("移除支付成功订单号失败：%s\n", orderCode))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

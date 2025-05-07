@@ -251,12 +251,12 @@ func (a *Alipay) sign(s string) (string, error) {
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
-func (a *Alipay) encryptWithPublicKey(plainText string) (string, error) {
+func (a *Alipay) verifySign(plainText, signature string) error {
 	// 获取公钥（假设你的结构体中有GetRSAPublicKey方法）
 	publicKeyPEM := a.GetRASKey(SignByAliPublicKey)
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
-		return "", fmt.Errorf("无效的PEM格式公钥")
+		return fmt.Errorf("无效的PEM格式公钥")
 	}
 
 	// 解析公钥（支持PKCS#1和PKCS#8格式）
@@ -268,24 +268,28 @@ func (a *Alipay) encryptWithPublicKey(plainText string) (string, error) {
 	case "PUBLIC KEY": // PKCS#8
 		genericKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
-			return "", fmt.Errorf("PKCS#8公钥解析失败: %v", err)
+			return fmt.Errorf("PKCS#8公钥解析失败: %v", err)
 		}
 		var ok bool
 		pubKey, ok = genericKey.(*rsa.PublicKey)
 		if !ok {
-			return "", fmt.Errorf("非RSA公钥")
+			return fmt.Errorf("非RSA公钥")
 		}
 	default:
-		return "", fmt.Errorf("不支持的密钥类型: %s", block.Type)
+		return fmt.Errorf("不支持的密钥类型: %s", block.Type)
 	}
 
-	// 加密操作（PKCS#1 v1.5填充）
-	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, pubKey, []byte(plainText))
+	// 计算消息的 SHA-256 哈希值
+	hash := sha256.Sum256([]byte(plainText))
+	sign2, _ := base64.StdEncoding.DecodeString(signature)
+
+	// 使用公钥验证签名
+	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], sign2)
 	if err != nil {
-		return "", fmt.Errorf("加密失败: %v", err)
+		return fmt.Errorf("签名验证失败: %v", err)
 	}
 
-	return base64.StdEncoding.EncodeToString(cipherText), nil
+	return nil
 }
 
 func (a *Alipay) GetRASKey(signType int) string {
@@ -307,49 +311,78 @@ func (a *Alipay) GetRASKey(signType int) string {
 	}
 }
 
+type syncPayResponse struct {
+	AlipayTradeQueryResponse struct {
+		Code           string `json:"code"`
+		Msg            string `json:"msg"`
+		BuyerLogonID   string `json:"buyer_logon_id"`
+		BuyerPayAmount string `json:"buyer_pay_amount"`
+		BuyerUserID    string `json:"buyer_user_id"`
+		BuyerUserType  string `json:"buyer_user_type"`
+		InvoiceAmount  string `json:"invoice_amount"`
+		OutTradeNo     string `json:"out_trade_no"`
+		PointAmount    string `json:"point_amount"`
+		ReceiptAmount  string `json:"receipt_amount"`
+		SendPayDate    string `json:"send_pay_date"`
+		TotalAmount    string `json:"total_amount"`
+		TradeNo        string `json:"trade_no"`
+		TradeStatus    string `json:"trade_status"`
+	} `json:"alipay_trade_query_response"`
+	Sign string `json:"sign"`
+}
+
 // PayStatus 返回内容自己去看文档，还有一个error
 // 手动请求数据是否过来
-func (a *Alipay) PayStatus(method string, bizContent map[string]string) (body []byte, err error) {
+func (a *Alipay) PayStatus(method string, bizContent map[string]string) ([]byte, error) {
 	//获取请求地址然后进行查询支付状态
+	var err error
+	var body []byte
+
 	reqUrl := a.Generate(method, bizContent)
 	if reqUrl == "" {
 		err = errors.New("生成的url有问题")
-		return
+		return body, err
 	}
+
 	get, err := http.Get(reqUrl)
 	if err != nil {
-		return
+		return body, err
 	}
+
 	defer get.Body.Close()
 	body, err = io.ReadAll(get.Body)
 	log.Println("返回内容", string(body))
-	m := map[string]interface{}{}
+
+	//body := []byte(`{"alipay_trade_query_response":{"code":"10000","msg":"Success","buyer_logon_id":"ytk***@sandbox.com","buyer_pay_amount":"0.00","buyer_user_id":"2088722065549884","buyer_user_type":"PRIVATE","invoice_amount":"0.00","out_trade_no":"order20250507zqrxztqwdisrpsddt","point_amount":"0.00","receipt_amount":"0.00","send_pay_date":"2025-05-07 16:45:48","total_amount":"640.00","trade_no":"2025050722001449880506492462","trade_status":"TRADE_SUCCESS"},"sign":"h6izQHKsTxxaAadZskkyaiLrJYCu3uaJsbbaRekDdN+NHCPo5hc3nGnJcYq5MbDGp30G7JmVfYmqLBPmzjZGDNV0WacnmOPmO3U0MYnBhPsqojfVqnLR16PkuiPVjz5hK5/zG3K3UaUGFRJfRl7SDKtvTYVOboQMz03PIe3BGsTv4CawU8+bcXFMcE0wil8ot9maHBCpHT1Qn7JNBTJM6+7gGdo2CadAntcgIoI/l9IuB5q51Waeu5QQsosKD00eVuEc5Y8U1S/OP8Yo7Cys/tEncwZZUvMiQGkyRgwp0UtdHVTlw/5xzN3CPErprDkFsuRuRsvqiZwZuAW0G6UnBw=="}`)
+	m := &syncPayResponse{}
 	err = json.Unmarshal(body, &m)
+
 	if err != nil {
-		return
+		return body, err
 	}
 	log.Printf("%#v", m)
-	resp := m["alipay_trade_query_response"]
-	log.Printf("%#v", resp)
-	if resp.(map[string]interface{})["code"].(string) != SuccessCode || resp.(map[string]interface{})["msg"].(string) != SuccessMsg {
+	resp := m.AlipayTradeQueryResponse
+	//log.Printf("%#v", resp)
+	if resp.Code != SuccessCode || resp.Msg != SuccessMsg {
 		err = errors.New("支付宝请求失败")
-		return
+		return body, err
 	}
 
 	respJson, err := json.Marshal(resp)
 	if err != nil {
-		return
+		return body, err
 	}
-
+	log.Println("<respJson>", string(respJson))
+	//
 	log.Println("<待签字符串>：", string(respJson))
 
-	sign, err := a.sign(string(respJson))
-	log.Println("<convert sign>", sign)
-	log.Println("<received sign>", sign)
-	if err != nil || sign != m["sign"] {
-		err = errors.New(m["alipay_trade_query_response"].(map[string]interface{})["msg"].(string))
-		return
+	err = a.verifySign(string(respJson), m.Sign)
+
+	if err != nil {
+		log.Println("签名验证失败：", err)
+		err = errors.New(resp.Msg)
+		return body, errors.New("同步订单支付状态：签名验证失败")
 	}
 
-	return
+	return body, nil
 }

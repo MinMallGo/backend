@@ -41,3 +41,20 @@ func (d *OrderSpuDao) Cancel(orderCode string) (err error) {
 	}).Error
 	return
 }
+
+func (d *OrderSpuDao) PaySuccess(orderCode string) error {
+	tx := d.db.Model(&model.MmOrderSpu{}).Where("order_code = ? AND payment_status = ?", orderCode, OrderStatusNeedPay).
+		Updates(map[string]interface{}{
+			"payment_status": OrderStatusPaid,
+			"update_time":    time.Now(),
+		})
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if tx.RowsAffected == 0 {
+		return errors.New("子订单支付状态修改失败")
+	}
+
+	return nil
+}
