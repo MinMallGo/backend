@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"errors"
 	"gorm.io/gorm"
 	"mall_backend/dao/model"
 	"mall_backend/util"
@@ -46,4 +47,17 @@ func (d *OrderPayLogDao) PaySuccess(orderCode string) error {
 		return tx.Error
 	}
 	return nil
+}
+
+func (d *OrderPayLogDao) One(orderCode string) (*model.MmOrderPayLog, error) {
+	res := &model.MmOrderPayLog{}
+	tx := d.db.Model(&model.MmOrderPayLog{}).Where("order_code = ?", orderCode).First(&res)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	if tx.RowsAffected == 0 {
+		return nil, errors.New("获取订单支付记录信息失败")
+	}
+	return res, nil
 }

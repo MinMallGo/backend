@@ -148,15 +148,22 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 	// 通过查询zSet中的订单号是否存在来判断是否能否继续走面的支付流程
 	// 1. 错误则返回错误，error.Is(err,redis.Nil) 这里需要忽略，因为是没找到
 	// 2. 如果权重（score）大于0说明正在支付中
-	score, err := util.CacheClient().ZRank(context.TODO(), util.OrderPayWaitKey(), order.OrderCode).Result()
+	score, err := util.CacheClient().ZScore(context.TODO(), util.OrderPayWaitKey(), order.OrderCode).Result()
 
 	if err != nil && !errors.Is(err, redis.Nil) {
 		response.Error(c, err)
 		return
 	}
-	log.Println(score)
-	if score > time.Now().Add(-util.OrderTTL()).Unix() {
-		response.Failure(c, "订单正在支付中请稍后再试")
+
+	if int64(score) > time.Now().Add(-util.OrderTTL()).Unix() {
+		// 考虑一下，如果这里返回的地址用户点击后没有支付然乎关闭了。再点进来。订单还没有支付，应该继续返回支付页面才对撒
+		// 这时候肯定再order_pay_log里面存在
+		one, err := dao.NewOrderPayLogDao(util.DBClient()).One(order.OrderCode)
+		if err != nil {
+			response.Error(c, err)
+			return
+		}
+		response.Success(c, one.PayQueryData)
 		return
 	}
 
