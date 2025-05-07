@@ -292,7 +292,7 @@ func (n *NormalStrategy) orderExpire(orderCode string) error {
 			return errors.Join(errors.New(fmt.Sprintf("订单号：%s归还库存失败：", n.orderCode)), err)
 		}
 
-		orderCoupon, err := dao.NewOrderCouponDao(util.DBClient()).More(n.orderCode)
+		orderCoupon, err := dao.NewOrderCouponDao(tx).More(n.orderCode)
 		if err != nil {
 			return err
 		}
