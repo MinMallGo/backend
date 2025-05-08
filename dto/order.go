@@ -28,9 +28,9 @@ type PayOrder struct {
 	PayWay    int    `json:"pay_way" form:"pay_way" binding:"required,oneof=1 2"`
 }
 
-type CancelOrder struct {
-	ID        int    `json:"id" binding:"required"`
+type RefundOrder struct {
 	OrderCode string `json:"order_code" binding:"required"`
+	Skus      []int  `json:"skus" binding:"required,dive"`
 }
 
 type OrderExpire struct {

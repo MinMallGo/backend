@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"log"
 	"mall_backend/service/order"
 	"mall_backend/service/pay"
 	"mall_backend/util"
@@ -12,6 +11,8 @@ import (
 	"time"
 )
 
+// TODO 有个bug。就是已经支付的订单如果没有被及时处理，这里会被移除，所以你需要检查订单是否支付，如果没有支付才能移除
+// TODO bug2 这里归还用户优惠券似乎出现了问题，需要你去看一下，你能做到吗 欸嘿，这个我做好了：因为事务里面我忘记用tx了用的util.DBClient()所以有问题
 func OrderExpireQueue() {
 	fmt.Println("订单过期结果查询队列启动成功")
 	ticker := time.NewTicker(time.Second * 1)
@@ -34,10 +35,10 @@ func OrderExpireQueue() {
 				continue
 			}
 			for _, orderCode := range waitOrders {
-				fmt.Printf("检查订单是否过期：订单号：%s\n", orderCode)
+				//fmt.Printf("检查订单是否过期：订单号：%s\n", orderCode)
 				go func(code string) {
 					err := order.Expire(code)
-					log.Printf("传入的订单号%s\n", code)
+					//log.Printf("传入的订单号%s\n", code)
 					if err != nil {
 						return
 					}
@@ -57,8 +58,6 @@ func OrderExpireQueue() {
 	}
 }
 
-// TODO 有个bug。就是已经支付的订单如果没有被及时处理，这里会被移除，所以你需要检查订单是否支付，如果没有支付才能移除
-// TODO bug2 这里归还用户优惠券似乎出现了问题，需要你去看一下，你能做到吗
 // OrderPayQueue 以同步的方式检查订单是否支付
 func OrderPayQueue() {
 	fmt.Println("同步支付结果查询队列启动成功")
@@ -77,14 +76,13 @@ func OrderPayQueue() {
 			}
 			for _, orderCode := range waitOrders {
 				go func(orderCode string) {
-					log.Printf("<UNK>%s\n", err)
 					// 查询是否支付
 					body, err := pay.NewAlipay(true).PayStatus("alipay.trade.query", map[string]string{
 						"out_trade_no": orderCode,
 					})
 
 					if err != nil {
-						log.Printf("pay status check is failed:%s\n", err)
+						//log.Printf("pay status check is failed:%s\n", err)
 						return
 					}
 

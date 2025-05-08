@@ -173,7 +173,6 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		return
 	}
 
-	var aliPayBody []byte
 	aliPayStr := ""
 	if err = util.DBClient().Transaction(func(tx *gorm.DB) error {
 		orderRes, err := dao.NewOrderDao(tx).CheckBeforePay(order, int(user.ID))
@@ -201,7 +200,7 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 
 		// 这里只是发起支付，还没支付成功，所以不需要更改订单状态。可以在redis里面锁定这个订单的支付状态
 
-		aliPayStr, aliPayBody, err = HandleAliPcPay(order, orderRes.PayAmount, fmt.Sprintf("min_mall:%s", orderRes.SubjectTitle))
+		aliPayStr, _, err = HandleAliPcPay(order, orderRes.PayAmount, fmt.Sprintf("min_mall:%s", orderRes.SubjectTitle))
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return err
 		}
@@ -226,80 +225,6 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 	}
 	response.Success(c, map[string]string{"url": aliPayStr})
 	return
-	response.HtmlSuccess(c, string(aliPayBody))
-}
-
-func CancelOrder(c *gin.Context, order *dto.CancelOrder) {
-	//user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
-	//if err != nil {
-	//	response.Error(c, err)
-	//	return
-	//}
-	//// 取消订单的步骤：
-	//// 1. 查看订单是否支付。 IsPaid
-	//// 2. 归还库存
-	//// 3. 归还优惠券
-	//// 4. 归还用户优惠券
-	//// 5.  TODO 如果支付了的话，要走退款流程
-	//// 6. 更改订单状态
-	//res := &model.MmOrder{}
-	//err = util.DBClient().Transaction(func(tx *gorm.DB) error {
-	//	// 查询订单是否支付
-	//	res, err = dao.NewOrderDao(tx).IsPaid(order, int(user.ID))
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// TODO 退款流程
-	//	time.Sleep(time.Second * 5)
-	//
-	//	// 通过主订单查询子订单，并修改子订单的状态以及归还商品库存
-	//	subOrders, err := dao.NewOrderSpuDao(tx).More(res.OrderCode)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// 归还商品库存
-	//	if err = dao.NewSkuDao(tx).IncreaseStock(subOrders); err != nil {
-	//		return err
-	//	}
-	//	// 修改子订单状态
-	//	if err = dao.NewOrderSpuDao(tx).Cancel(res.OrderCode); err != nil {
-	//		return err
-	//	}
-	//	// 修改住主订单状态
-	//	if err = dao.NewOrderDao(tx).Cancel(order, int(user.ID)); err != nil {
-	//		return err
-	//	}
-	//	// 1. 归还优惠券
-	//	// 2. 归还用户优惠券
-	//	if len(res.Coupons) > 0 {
-	//		tmp := strings.Split(res.Coupons, ",")
-	//		ids := make([]int, 0, len(tmp))
-	//		for _, couponId := range tmp {
-	//			id, err := strconv.Atoi(couponId)
-	//			if err != nil {
-	//				return errors.New("归还优惠券失败，请联系客服")
-	//			}
-	//			ids = append(ids, id)
-	//		}
-	//		if err = dao.NewCouponDao(tx).Cancel(ids...); err != nil {
-	//			return err
-	//		}
-	//		if err = dao.NewUserCouponDao(tx).Cancel(int(user.ID), ids...); err != nil {
-	//			return err
-	//		}
-	//	}
-	//	// 记录退款日志
-	//	if err = dao.NewOrderCancelDao(tx).Create(res, int(user.ID)); err != nil {
-	//		return err
-	//	}
-	//	return nil
-	//})
-	//if err != nil {
-	//	response.Error(c, err)
-	//	return
-	//}
-	//response.Success(c, []string{})
-	//return
 }
 
 // Expire 这里来的都是过期的订单并且创建了支付请求的订单，如果过期了说明支付也过期了。需要归还库存
@@ -391,6 +316,10 @@ func PaySuccess(orderCode string) error {
 			return errors.New(fmt.Sprintf("移除支付成功订单号失败：%s\n", orderCode))
 		}
 
+		// TODO 通知
+
+		// TODO 发货
+
 		return nil
 	})
 
@@ -399,4 +328,114 @@ func PaySuccess(orderCode string) error {
 	}
 
 	return nil
+}
+
+// 1. 通过订单号以及sku来进行验证和确认退款的金额
+// 2. 进来操作的时候要加锁。避免
+// 3. 在事务里面进行
+// 2. 先检查订单，订单的sku是否都存在  返回 *[]model.MmOrderSpu{},error
+// 3. 然后检查金额
+// 4. 调用ali的退款接口
+// 5. todo。这里还需要一个退款查询的队列
+
+func Refund(c *gin.Context, refund *dto.RefundOrder) {
+	// 1. 分布式锁整一个
+	// 使用分布式锁进行锁订单，获取到锁才行执行下面的步骤
+
+	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	err = OrderSetNx(util.OrderSetNXLockName(refund.OrderCode), util.OrderTTL(), util.OrderTTL())
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	defer func() {
+		err := OrderReleaseLock(util.OrderSetNXLockName(refund.OrderCode))
+		if err != nil {
+			// 记录日志，处理释放锁失败的情况
+			log.Println("订单退款释放锁失败")
+		}
+	}()
+
+	// 等哈儿退款成功了要进行，order，orderSpu支付状态的修改。额其实是sku
+	// 计算当前这些订单的价格，并获取
+	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
+		one, err := dao.NewOrderDao(tx).One(refund.OrderCode)
+		if err != nil {
+			return err
+		}
+
+		if one.UserID != int64(user.ID) {
+			return errors.New("退款失败：请选择正确的订单")
+		}
+
+		if (*one).PaymentStatus == dao.OrderStatusNeedPay {
+			return errors.New("退款失败：请选择正确的订单")
+		}
+
+		if (*one).PaymentStatus == dao.OrderStatusAllCancel {
+			return errors.New("退款失败：当前订单已经全部退款")
+		}
+
+		refundOrder, err := dao.NewOrderSpuDao(tx).MoreRefundOrder(refund.OrderCode, refund.Skus...)
+		if err != nil {
+			return err
+		}
+		var amount int64
+		stocks := make([]dao.StockUpdate, 0, len(*refundOrder))
+		for _, v := range *refundOrder {
+			amount += v.PayAmount
+			stocks = append(stocks, dao.StockUpdate{
+				ID:  int(v.SkuID),
+				Num: int(v.Count),
+			})
+		}
+
+		err = pay.NewAlipay(true).Cancel(map[string]string{
+			"refund_amount": fmt.Sprintf("%.2f", float64(amount)/100),
+			"out_trade_no":  refund.OrderCode,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = dao.NewOrderDao(tx).Refund(refund.OrderCode, amount)
+		if err != nil {
+			return err
+		}
+
+		err = dao.NewOrderSpuDao(tx).Refund(refundOrder)
+		if err != nil {
+			return err
+		}
+
+		// 创建退款记录
+		// 这里应该修改退款的金额为实际退款金额，不一定就是订单的总金额
+		one.PayAmount = amount
+		err = dao.NewOrderRefundDao(tx).Create(one)
+		if err != nil {
+			return err
+		}
+
+		// 归还子订单的库存
+		err = dao.NewSkuDao(tx).StockIncrease(&stocks)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, "退单成功")
+	return
 }

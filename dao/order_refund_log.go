@@ -11,25 +11,24 @@ type OrderCancelDao struct {
 	db *gorm.DB
 }
 
-func NewOrderCancelDao(db *gorm.DB) *OrderCancelDao {
+func NewOrderRefundDao(db *gorm.DB) *OrderCancelDao {
 	return &OrderCancelDao{
 		db: db,
 	}
 }
 
-func (d *OrderCancelDao) Create(order *model.MmOrder, userId int) error {
-	param := &model.MmOrderCancelLog{
+func (d *OrderCancelDao) Create(order *model.MmOrder) error {
+	param := &model.MmOrderRefundLog{
 		OrderID:        order.ID,
 		OrderCode:      order.OrderCode,
 		BatchCode:      order.BatchCode,
-		UserID:         int32(userId),
+		UserID:         int32(order.UserID),
 		CancelAmount:   order.PayAmount,
 		CancelWay:      order.PaymentWay,
 		CancelAt:       time.Now(),
 		ThirdPartyCode: "",
-		PayQueryData:   "",
 	}
-	tx := d.db.Model(&model.MmOrderCancelLog{}).Create(param)
+	tx := d.db.Model(&model.MmOrderRefundLog{}).Create(param)
 	if tx.Error != nil || tx.RowsAffected == 0 {
 		return errors.New("退款失败：写入订单退款日志失败")
 	}

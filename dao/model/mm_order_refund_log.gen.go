@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-const TableNameMmOrderCancelLog = "mm_order_cancel_log"
+const TableNameMmOrderRefundLog = "mm_order_refund_log"
 
-// MmOrderCancelLog 订单退款记录
-type MmOrderCancelLog struct {
+// MmOrderRefundLog 订单退款记录
+type MmOrderRefundLog struct {
 	ID        int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	OrderID   int32  `gorm:"column:order_id;not null;comment:订单id" json:"order_id"` // 订单id
 	OrderCode string `gorm:"column:order_code;comment:订单唯一编号" json:"order_code"`    // 订单唯一编号
@@ -25,10 +25,9 @@ type MmOrderCancelLog struct {
 	CancelWay      int32     `gorm:"column:cancel_way;comment:退款的方式" json:"cancel_way"`               // 退款的方式
 	CancelAt       time.Time `gorm:"column:cancel_at" json:"cancel_at"`
 	ThirdPartyCode string    `gorm:"column:third_party_code;comment:第三方订单编号" json:"third_party_code"` // 第三方订单编号
-	PayQueryData   string    `gorm:"column:pay_query_data;comment:请求支付时的请求数据" json:"pay_query_data"`  // 请求支付时的请求数据
 }
 
-// TableName MmOrderCancelLog's table name
-func (*MmOrderCancelLog) TableName() string {
-	return TableNameMmOrderCancelLog
+// TableName MmOrderRefundLog's table name
+func (*MmOrderRefundLog) TableName() string {
+	return TableNameMmOrderRefundLog
 }

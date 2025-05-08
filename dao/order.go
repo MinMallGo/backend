@@ -2,6 +2,7 @@ package dao
 
 import (
 	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"mall_backend/dao/model"
@@ -98,21 +99,6 @@ func (u *OrderDao) IsPaid(orderCode string) (bool, error) {
 	return true, nil
 }
 
-func (u *OrderDao) Cancel(order *dto.CancelOrder, userId int) error {
-	//res := u.db.Model(&model.MmOrder{}).Where("id = ? AND order_code = ? AND user_id = ? AND payment_status = ?",
-	//	order.ID, order.OrderCode, userId, OrderStatusPaid).Updates(map[string]interface{}{
-	//	"payment_status": false,
-	//	//"process_status": OrderCommitCancel,
-	//	"update_time": time.Now(),
-	//})
-	//if res.Error != nil || res.RowsAffected == 0 {
-	//	return errors.New("订单取消失败：更新主订单失败")
-	//}
-	// TODO 这里要重写退货这个东西
-
-	return nil
-}
-
 func (u *OrderDao) Expire(orderCode string) error {
 	res := u.db.Model(&model.MmOrder{}).Where("order_code = ? AND payment_status = ?",
 		orderCode, false, OrderStatusNeedPay).Updates(map[string]interface{}{
@@ -171,6 +157,28 @@ func (u *OrderDao) PaySuccess(orderCode string) error {
 
 	if tx.RowsAffected == 0 {
 		return errors.New("订单支付状态修改失败")
+	}
+
+	return nil
+}
+
+func (u *OrderDao) Refund(orderCode string, cancelAmount int64) error {
+	tx := u.db.Model(&model.MmOrder{}).
+		Where("pay_amount <= ?", cancelAmount).
+		Where("order_code = ?", orderCode).
+		Update("payment_status", gorm.Expr(`
+        CASE 
+            WHEN pay_amount = ? THEN `+fmt.Sprintf("%d", OrderStatusAllCancel)+` 
+            WHEN pay_amount < ? THEN `+fmt.Sprintf("%d", OrderStatusPartCancel)+` 
+            ELSE payment_status 
+        END`, cancelAmount, cancelAmount))
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if tx.RowsAffected == 0 {
+		return errors.New("订单退款失败：更新主订单失败")
 	}
 
 	return nil

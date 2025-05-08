@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mall_backend/dao"
+	"mall_backend/util"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,6 +22,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -127,14 +130,14 @@ func (a *Alipay) Generate(method string, bizContent map[string]string) string {
 	m["biz_content"] = a.bizContent(bizContent)
 	// 2. 转成 key=value& 拼接成字符串
 	convertStr := a.map2string(m, false)
-	log.Println("待签字符串：", convertStr)
+	//log.Println("待签字符串：", convertStr)
 
 	// todo 这里需要生成sign，然后再生成str
 	sign, err := a.sign(convertStr)
 	if err != nil {
 		panic(err)
 	}
-	log.Println("签名：", sign)
+	//log.Println("签名：", sign)
 	//// 到这里都是ok的
 	//m["sign"] = sign
 	//m["biz_content"] = a.map2string(bizContent, true)
@@ -142,12 +145,12 @@ func (a *Alipay) Generate(method string, bizContent map[string]string) string {
 
 	// 拼接 sign
 	convertStr += "&sign=" + sign
-	log.Println("加上sign拼接", convertStr)
+	//log.Println("加上sign拼接", convertStr)
 	// 将所有的value转成 url.QueryEscape
 	ex := a.Escape(convertStr)
-	log.Println("将所有的一级的key的value转了escape：", ex)
+	//log.Println("将所有的一级的key的value转了escape：", ex)
 	ex = RequestUrl + "?" + ex
-	log.Println("带上请求地址：", ex)
+	//log.Println("带上请求地址：", ex)
 	return ex
 }
 
@@ -208,7 +211,7 @@ func (a *Alipay) sign(s string) (string, error) {
 	sum := sha256.Sum256([]byte(s))
 
 	key := a.GetRASKey(SignByPrivateKey)
-	log.Println("<>>>>><<<<<<<><><><><><><", key)
+	//log.Println("<>>>>><<<<<<<><><><><><><", key)
 	// 解析私钥
 	//block, _ := pem.Decode([]byte(fmt.Sprintf("-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----", ProgramPrivateKey)))
 	block, _ := pem.Decode([]byte(key))
@@ -216,8 +219,8 @@ func (a *Alipay) sign(s string) (string, error) {
 		return "", fmt.Errorf("无效的 PEM 格式")
 	}
 
-	log.Println("原始待签名字符串：", s)
-	log.Println("私钥类型：", block.Type)
+	//log.Println("原始待签名字符串：", s)
+	//log.Println("私钥类型：", block.Type)
 	var privateKey *rsa.PrivateKey
 	var err error
 
@@ -351,7 +354,7 @@ func (a *Alipay) PayStatus(method string, bizContent map[string]string) ([]byte,
 
 	defer get.Body.Close()
 	body, err = io.ReadAll(get.Body)
-	log.Println("返回内容", string(body))
+	//log.Println("返回内容", string(body))
 
 	//body := []byte(`{"alipay_trade_query_response":{"code":"10000","msg":"Success","buyer_logon_id":"ytk***@sandbox.com","buyer_pay_amount":"0.00","buyer_user_id":"2088722065549884","buyer_user_type":"PRIVATE","invoice_amount":"0.00","out_trade_no":"order20250507zqrxztqwdisrpsddt","point_amount":"0.00","receipt_amount":"0.00","send_pay_date":"2025-05-07 16:45:48","total_amount":"640.00","trade_no":"2025050722001449880506492462","trade_status":"TRADE_SUCCESS"},"sign":"h6izQHKsTxxaAadZskkyaiLrJYCu3uaJsbbaRekDdN+NHCPo5hc3nGnJcYq5MbDGp30G7JmVfYmqLBPmzjZGDNV0WacnmOPmO3U0MYnBhPsqojfVqnLR16PkuiPVjz5hK5/zG3K3UaUGFRJfRl7SDKtvTYVOboQMz03PIe3BGsTv4CawU8+bcXFMcE0wil8ot9maHBCpHT1Qn7JNBTJM6+7gGdo2CadAntcgIoI/l9IuB5q51Waeu5QQsosKD00eVuEc5Y8U1S/OP8Yo7Cys/tEncwZZUvMiQGkyRgwp0UtdHVTlw/5xzN3CPErprDkFsuRuRsvqiZwZuAW0G6UnBw=="}`)
 	m := &syncPayResponse{}
@@ -360,7 +363,7 @@ func (a *Alipay) PayStatus(method string, bizContent map[string]string) ([]byte,
 	if err != nil {
 		return body, err
 	}
-	log.Printf("%#v", m)
+	//log.Printf("%#v", m)
 	resp := m.AlipayTradeQueryResponse
 	//log.Printf("%#v", resp)
 	if resp.Code != SuccessCode || resp.Msg != SuccessMsg {
@@ -372,17 +375,115 @@ func (a *Alipay) PayStatus(method string, bizContent map[string]string) ([]byte,
 	if err != nil {
 		return body, err
 	}
-	log.Println("<respJson>", string(respJson))
+	//log.Println("<respJson>", string(respJson))
 	//
-	log.Println("<待签字符串>：", string(respJson))
+	//log.Println("<待签字符串>：", string(respJson))
 
 	err = a.verifySign(string(respJson), m.Sign)
 
 	if err != nil {
-		log.Println("签名验证失败：", err)
+		//log.Println("签名验证失败：", err)
 		err = errors.New(resp.Msg)
 		return body, errors.New("同步订单支付状态：签名验证失败")
 	}
 
+	if resp.TradeStatus != "TRADE_SUCCESS" {
+		return nil, errors.New("交易支付未成功")
+	}
+
+	// 对比付款的金额和订单的金额是否一致
+	one, err := dao.NewOrderDao(util.DBClient()).One(resp.OutTradeNo)
+	if err != nil {
+		return nil, err
+	}
+
+	needPay := strconv.FormatFloat(float64(one.PayAmount/100.00), 'f', 2, 64)
+
+	if needPay != resp.TotalAmount {
+		return body, errors.New("支付查询失败，请检查后再试试")
+	}
+
+	// TODO 这种应该放在死信队列里面（新建个zset来存放有问题的这些订单）
+	// TODO 成功了的话还需要通知，通知发货等操作
 	return body, nil
+}
+
+type CancelResponse struct {
+	AlipayTradeRefundResponse struct {
+		Code         string `json:"code"`
+		Msg          string `json:"msg"`
+		BuyerLogonID string `json:"buyer_logon_id"`
+		BuyerUserID  string `json:"buyer_user_id"`
+		FundChange   string `json:"fund_change"`
+		GmtRefundPay string `json:"gmt_refund_pay"`
+		OutTradeNo   string `json:"out_trade_no"`
+		RefundFee    string `json:"refund_fee"`
+		SendBackFee  string `json:"send_back_fee"`
+		TradeNo      string `json:"trade_no"`
+	} `json:"alipay_trade_refund_response"`
+	Sign string `json:"sign"`
+}
+
+// Cancel 退单 入参 bizContent：refund_amount：额，转成str然后直接截取得了,out_trade_no：orderCode
+func (a *Alipay) Cancel(bizContent map[string]string) error {
+	var err error
+	var body []byte
+	reqUrl := a.Generate("alipay.trade.refund", bizContent)
+	if reqUrl == "" {
+		err = errors.New("生成的url有问题")
+		return err
+	}
+
+	get, err := http.Get(reqUrl)
+	if err != nil {
+		return err
+	}
+
+	defer get.Body.Close()
+	body, err = io.ReadAll(get.Body)
+	if err != nil {
+		return err
+	}
+
+	res := &CancelResponse{}
+	err = json.Unmarshal(body, res)
+	if err != nil {
+		return err
+	}
+
+	// 验签
+	resp := res.AlipayTradeRefundResponse
+	//log.Printf("%#v", resp)
+	if resp.Code != SuccessCode || resp.Msg != SuccessMsg {
+		err = errors.New(fmt.Sprintf("支付宝请求退款失败：错误码：%v, 错误信息：%v", resp.Code, resp.Msg))
+		return err
+	}
+
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		return err
+	}
+
+	err = a.verifySign(string(respJson), res.Sign)
+
+	if err != nil {
+		//log.Println("签名验证失败：", err)
+		err = errors.New(resp.Msg)
+		return errors.New("订单退款：签名验证失败")
+	}
+
+	log.Printf("%#v", resp)
+	// 如果钱没退完，且没有成功，说明有问题
+	// 如果不是Y，有可能是退款退完了所以失败了
+	if resp.FundChange != "Y" && (bizContent["refund_amount"] != resp.RefundFee) {
+		return errors.New(fmt.Sprintf("退款未成功：期待退款：%v，实际退款：%v", bizContent["refund_amount"], resp.RefundFee))
+	}
+
+	// 对比付款的金额和订单的金额是否一致
+
+	if bizContent["refund_amount"] != resp.RefundFee {
+		return errors.New(fmt.Sprintf("退款失败：期待退款：%v，实际退款：%v", bizContent["refund_amount"], resp.RefundFee))
+	}
+
+	return nil
 }
