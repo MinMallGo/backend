@@ -23,6 +23,7 @@ func Register(r *gin.Engine) {
 	CouponRegister(r)
 	// 注册购物车
 	CartRegister(r)
+	MenuInit(r)
 	// 注册订单
 	OrderRegister(r)
 	// 地址注册

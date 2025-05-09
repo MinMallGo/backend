@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"mall_backend/middleware"
 	routes "mall_backend/route"
+	"mall_backend/service"
 	"mall_backend/service/queue"
 	"mall_backend/util"
 )
@@ -27,6 +28,7 @@ func main() {
 	routes.Register(g)
 	// 启动前初始化
 	initNecessary()
+	service.Menu()
 	// 启动
 	panic(g.Run())
 }
