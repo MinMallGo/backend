@@ -10,7 +10,7 @@ import (
 func Create(c *gin.Context) {
 	param := &dto.OrderCreate{}
 	if err := c.ShouldBind(param); err != nil {
-		response.Error(c, err)
+		response.Failure(c, "订单创建验证失败："+err.Error())
 		return
 	}
 	order.Create(c, param)

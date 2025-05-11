@@ -11,9 +11,9 @@ type Context struct {
 }
 
 type Result struct {
-	ID        int
-	Code      string
-	BatchCode string
+	ID        int    `json:"id"`
+	Code      string `json:"order_code"`
+	BatchCode string `json:"batch_code"`
 }
 
 type Strategy interface {

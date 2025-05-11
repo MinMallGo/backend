@@ -25,6 +25,10 @@ func NewUserCouponDao(db *gorm.DB) *UserCouponDao {
 }
 
 func (d *UserCouponDao) Use(userId int, ids ...int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	
 	tx := d.db.Model(&model.MmUserCoupon{}).
 		Where("user_id = ?", userId).
 		Where("coupon_id in ?", ids).

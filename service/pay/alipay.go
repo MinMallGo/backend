@@ -433,6 +433,7 @@ func (a *Alipay) Cancel(bizContent map[string]string) error {
 		err = errors.New("生成的url有问题")
 		return err
 	}
+	//log.Println(reqUrl)
 
 	get, err := http.Get(reqUrl)
 	if err != nil {
@@ -476,7 +477,7 @@ func (a *Alipay) Cancel(bizContent map[string]string) error {
 	// 如果钱没退完，且没有成功，说明有问题
 	// 如果不是Y，有可能是退款退完了所以失败了
 	if resp.FundChange != "Y" && (bizContent["refund_amount"] != resp.RefundFee) {
-		return errors.New(fmt.Sprintf("退款未成功：期待退款：%v，实际退款：%v", bizContent["refund_amount"], resp.RefundFee))
+		return errors.New(fmt.Sprintf("退款未成功：期望退款：%v，实际已退款：%v", bizContent["refund_amount"], resp.RefundFee))
 	}
 
 	// 对比付款的金额和订单的金额是否一致
