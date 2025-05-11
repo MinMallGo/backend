@@ -14,6 +14,7 @@ type DataBaseConfig struct {
 	MaxIdleConns    int    `ini:"max_idle_conns"`
 	MaxOpenConns    int    `ini:"max_open_conns"`
 	ConnMaxLifetime int    `ini:"conn_max_lifetime"`
+	ConnMaxIdleTime int    `ini:"conn_max_idle_time"`
 }
 
 type DatabaseClient struct {
