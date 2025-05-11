@@ -16,6 +16,7 @@ import (
 func OrderExpireQueue() {
 	fmt.Println("订单过期结果查询队列启动成功")
 	ticker := time.NewTicker(time.Second * 1)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -62,6 +63,7 @@ func OrderExpireQueue() {
 func OrderPayQueue() {
 	fmt.Println("同步支付结果查询队列启动成功")
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:

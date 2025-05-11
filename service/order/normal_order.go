@@ -1,8 +1,10 @@
 package order
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"log"
 	"mall_backend/dao"
@@ -36,7 +38,7 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 	// 通过查询获取到商品的价格
 	product, err := dao.NewSkuDao(util.DBClient()).MoreWithOrder(&create.Product)
 	if err != nil {
-		err = errors.New("创建订单失败：商品检查失败")
+		err = errors.New("创建订单失败：商品检查失败:" + err.Error())
 		return
 	}
 
@@ -53,7 +55,7 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 
 	couponLadders, err := dao.NewCouponDao(util.DBClient()).CouponWithLadder(create.Coupons...)
 	if err != nil {
-		err = errors.New("创建订单失败：查询优惠券失败")
+		err = errors.New("创建订单失败：查询优惠券失败:" + err.Error())
 		return
 	}
 
@@ -76,7 +78,7 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 			// 这里直接控制是否叠加使用
 			couponMap[item.Scope.Code] = item.Scope.Code
 		}
-		log.Println(couponMap)
+		//log.Println(couponMap)
 		if len(couponMap) > 2 {
 			err = errors.New("创建订单失败： 多种优惠券不能同时叠加")
 			return
@@ -99,7 +101,7 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 
 	// 使用策略模式里面的优惠券
 	finalPrice := totalPrice
-	log.Println("使用优惠券之前：", totalPrice)
+	//log.Println("使用优惠券之前：", totalPrice)
 	couponCtx := make(map[int]string) // 为了保存优惠券使用记录
 	for _, item := range *couponLadders {
 		tx := coupon.Context{
@@ -129,7 +131,7 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 
 		finalPrice = tx.Price
 	}
-	log.Println("使用优惠券之后：", finalPrice)
+	//log.Println("使用优惠券之后：", finalPrice)
 	// 1. 创建订单
 	// 2. 扣减优惠券
 	// 3. 扣减库存
@@ -165,29 +167,46 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 	orderCoupon := n.orderCoupon(couponCtx)
 	// 拆分商品以及具体的信息到order_spu
 	subOrder := n.orderSpu(create, product)
+	stock := make([]dao.StockUpdate, 0, len(create.Product))
+	for _, item := range create.Product {
+		stock = append(stock, dao.StockUpdate{
+			ID:  item.SkuID,
+			Num: item.Num,
+		})
+	}
 
 	orderId := 0
 	err = util.DBClient().Transaction(func(tx *gorm.DB) error {
+		// 创建主订单
 		orderId, err = dao.NewOrderDao(tx).Create(orderCreate)
 		if err != nil {
 			return err
 		}
-
+		// 创建子订单
 		if err = dao.NewOrderSpuDao(tx).Create(subOrder); err != nil {
 			return err
 		}
+		// 使用扣减优惠券
 		if err = dao.NewCouponDao(tx).CouponUse(create.Coupons...); err != nil {
 			return err
 		}
-
+		// 创建订单使用的优惠券
 		if err = dao.NewOrderCouponDao(tx).Create(orderCoupon); err != nil {
 			return err
 		}
-		// TODO 应该是是支付的时候才扣库存，只有秒杀是创建订单就扣减库存
-		//if err = dao.NewSkuDao(tx).StockDecrease(&stock); err != nil {
-		//	return err
-		//}
-		if err = dao.NewUserCouponDao(tx).Use(ctx.UserID, create.Coupons...); err != nil {
+		// 库存扣减
+		if err = dao.NewSkuDao(tx).StockDecrease(&stock); err != nil {
+			return err
+		}
+		// 使用优惠券
+		if len(create.Coupons) > 1 {
+			if err = dao.NewUserCouponDao(tx).Use(ctx.UserID, create.Coupons...); err != nil {
+				return err
+			}
+		}
+
+		// 消息投递
+		if err = n.Record2MQ(orderCode); err != nil {
 			return err
 		}
 
@@ -202,6 +221,21 @@ func (n *NormalStrategy) CreateOrder(ctx *Context) (res Result, err error) {
 		Code:      orderCode,
 		BatchCode: batchCode,
 	}, nil
+}
+
+// Record2MQ 记录下单的订单到redis里面做持久化以及扫描
+// TODO 这里右面要优化成使用mq来做延时任务。这里只是做个兜底测策略
+// 先放这儿吧。后面这里要做成投递到消息队列里面
+func (n *NormalStrategy) Record2MQ(orderCode string) error {
+	// 这里创建订单失败正常的，
+	_, err := util.CacheClient().ZAdd(context.TODO(), util.OrderPayWaitKey(), redis.Z{
+		Score:  float64(time.Now().Add(util.OrderTTL()).Unix()),
+		Member: orderCode,
+	}).Result()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // orderSpu 拆分订单的商品到子订单，为啥要这么拆分？因为order是每个商家存的同一个订单

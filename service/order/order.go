@@ -54,11 +54,11 @@ func Create(c *gin.Context, create *dto.OrderCreate) {
 	}
 
 	if !dao.NewSpuDao(util.DBClient()).Exists(spuIds...) {
-		response.Error(c, errors.New("创建订单失败：请选择正确的商品"))
+		response.Error(c, errors.New(fmt.Sprintf("创建订单失败：请选择正确的商品:%v", spuIds)))
 		return
 	}
 	if !dao.NewSkuDao(util.DBClient()).Exists(skuIds...) {
-		response.Error(c, errors.New("创建订单失败：请选择正确的商品规格"))
+		response.Error(c, errors.New(fmt.Sprintf("创建订单失败：请选择正确的商品规格:%v", skuIds)))
 		return
 	}
 
@@ -67,14 +67,17 @@ func Create(c *gin.Context, create *dto.OrderCreate) {
 		return
 	}
 
-	if err = dao.NewCouponDao(util.DBClient()).ExistsWithUser(int(user.ID), create.Coupons...); err != nil {
-		response.Error(c, errors.Join(errors.New("创建订单失败："), err))
-		return
-	}
+	// 使用了优惠券再查询
+	if len(create.Coupons) > 0 {
+		if err = dao.NewCouponDao(util.DBClient()).ExistsWithUser(int(user.ID), create.Coupons...); err != nil {
+			response.Error(c, errors.Join(errors.New("创建订单失败："), err))
+			return
+		}
 
-	if err = dao.NewUserCouponDao(util.DBClient()).Exists(int(user.ID), create.Coupons...); err != nil {
-		response.Error(c, errors.Join(errors.New("创建订单失败：请选择检查个人优惠券："), err))
-		return
+		if err = dao.NewUserCouponDao(util.DBClient()).Exists(int(user.ID), create.Coupons...); err != nil {
+			response.Error(c, errors.Join(errors.New("创建订单失败：请选择检查个人优惠券："), err))
+			return
+		}
 	}
 
 	ctx := &Context{
@@ -184,36 +187,12 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		if err != nil {
 			return err
 		}
-		var stock []dao.StockUpdate
-		for _, spu := range *more {
-			stock = append(stock, dao.StockUpdate{
-				ID:  int(spu.SkuID),
-				Num: int(spu.Count),
-			})
-		}
-
-		// 库存扣减
-		err = dao.NewSkuDao(tx).StockDecrease(&stock)
-		if err != nil {
-			return err
-		}
-
-		// 这里只是发起支付，还没支付成功，所以不需要更改订单状态。可以在redis里面锁定这个订单的支付状态
-
+		// 请求支付宝支付地址
 		aliPayStr, _, err = HandleAliPcPay(order, orderRes.PayAmount, fmt.Sprintf("min_mall:%s", orderRes.SubjectTitle))
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return err
 		}
 		if err = dao.NewOrderPayLogDao(tx).Create(more, aliPayStr); err != nil {
-			return err
-		}
-
-		// 这里创建订单失败正常的，
-		_, err = util.CacheClient().ZAdd(context.TODO(), util.OrderPayWaitKey(), redis.Z{
-			Score:  float64(time.Now().Add(util.OrderTTL()).Unix()),
-			Member: order.OrderCode,
-		}).Result()
-		if err != nil {
 			return err
 		}
 
