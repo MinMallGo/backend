@@ -22,6 +22,8 @@ func main() {
 	g.Use(gin.Recovery())
 	// 跨域中间件
 	g.Use(middleware.CORS())
+	// IP限流中间件
+	g.Use(middleware.IPLimiter())
 	//// 注册日志记录中间件
 	//g.Use(sloggin.New(logger))
 	// 路由注册
