@@ -16,6 +16,7 @@ const (
 	fail        RespType = 400
 	UserNoAuth  RespType = 401
 	AdminNoAuth RespType = 403
+	panicCode   RespType = 500
 )
 
 type Response struct {
@@ -83,4 +84,12 @@ func Error(c *gin.Context, err error) {
 	}
 
 	Failure(c, err.Error())
+}
+
+func Panic(c *gin.Context, err error) {
+	c.JSON(http.StatusOK, Response{
+		Status:  int(panicCode),
+		Message: err.Error(),
+		Data:    struct{}{},
+	})
 }

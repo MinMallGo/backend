@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"mall_backend/global"
 	"mall_backend/middleware"
 	routes "mall_backend/route"
 	"mall_backend/service"
@@ -13,24 +14,28 @@ func main() {
 	// 开启控制台颜色
 	gin.ForceConsoleColor()
 
-	g := gin.Default()
+	g := gin.New()
 
 	//logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	//// 记录日志
-	//g.Use(gin.Logger())
+	g.Use(gin.Logger())
+	// 记录panic的异常报错
+	//g.Use(gin.RecoveryWithWriter(ZLogger()))
+	g.Use(middleware.Recover())
 	// 从错误中恢复
-	g.Use(gin.Recovery())
+	//g.Use(gin.Recovery())
 	// 跨域中间件
 	g.Use(middleware.CORS())
 	// IP限流中间件
 	g.Use(middleware.IPLimiter())
-	//// 注册日志记录中间件
+	// 注册日志记录中间件
 	//g.Use(sloggin.New(logger))
 	// 路由注册
 	routes.Register(g)
 	// 启动前初始化
 	initNecessary()
 	service.Menu()
+	defer global.Suger.Sync()
 	// 启动
 	panic(g.Run(":7890"))
 }
@@ -52,4 +57,7 @@ func initNecessary() {
 	go queue.OrderPayQueue()
 	// 注册自定义验证规则
 	util.ValidatorRegister()
+	// 初始化zap日志
+	global.LoggerInstance()
+	global.Suger.Infow("init success")
 }

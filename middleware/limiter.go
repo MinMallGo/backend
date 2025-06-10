@@ -5,6 +5,8 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"log"
+	"mall_backend/global"
 	"mall_backend/response"
 	"mall_backend/util"
 	"time"
@@ -26,12 +28,14 @@ var luaScript = redis.NewScript(`
 // IPLimiter 创建一个IP限流器
 func IPLimiter() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		s := []string{"123"}
+		i := 1
+		log.Println(s[i])
 		ip := c.ClientIP()
 		if ip == "::1" {
 			ip = "127.0.0.1"
 		}
 		ip = IPLimiterKey + ip
-
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 500*time.Millisecond)
 		defer cancel()
 
@@ -39,6 +43,7 @@ func IPLimiter() gin.HandlerFunc {
 		cnt, ok := counter.(int64)
 
 		if err != nil || !ok || cnt > PeerIPQPSLimit {
+			global.Suger.Infow("限流器记录", "ip", ip, "err", err)
 			response.Error(c, errors.New("请求过于频繁，请稍后再试"))
 			c.Abort()
 			return
