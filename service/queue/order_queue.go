@@ -63,7 +63,11 @@ func OrderExpireQueue() {
 func OrderPayQueue() {
 	fmt.Println("同步支付结果查询队列启动成功")
 	ticker := time.NewTicker(time.Second)
+	// TODO 限制并发数量
 	defer ticker.Stop()
+
+	// 限制并发数量
+	semaphore := make(chan struct{}, 10)
 	for {
 		select {
 		case <-ticker.C:
@@ -77,7 +81,9 @@ func OrderPayQueue() {
 				continue
 			}
 			for _, orderCode := range waitOrders {
+				semaphore <- struct{}{}
 				go func(orderCode string) {
+					defer func() { <-semaphore }()
 					// 查询是否支付
 					body, err := pay.NewAlipay(true).PayStatus("alipay.trade.query", map[string]string{
 						"out_trade_no": orderCode,

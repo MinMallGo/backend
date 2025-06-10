@@ -18,9 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,37 +56,37 @@ var sbPubKey string
 var sbPrivKey string
 
 func init() {
-	pk, err := os.ReadFile(getPath("/pay/RSA2/PublicKeyRSA2048.txt"))
+	pk, err := os.ReadFile(getPath("/config/RSA2/PublicKeyRSA2048.txt"))
 	if err != nil {
 		panic(err)
 	}
 	ProgramPublicKey = fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----", string(pk))
 
-	pk, err = os.ReadFile(getPath("/pay/RSA2/PrivateKeyRSA2048.txt"))
+	pk, err = os.ReadFile(getPath("/config/RSA2/PrivateKeyRSA2048.txt"))
 	if err != nil {
 		panic("get rsa private key failed")
 	}
 	ProgramPrivateKey = fmt.Sprintf("-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----", string(pk))
 
-	pk, err = os.ReadFile(getPath("/pay/RSA2/alipayPublicKey_RSA2.txt"))
+	pk, err = os.ReadFile(getPath("/config/RSA2/alipayPublicKey_RSA2.txt"))
 	if err != nil {
 		panic(err)
 	}
 	AliPublicKeyRAS2 = fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----", string(pk))
 
-	pk, err = os.ReadFile(getPath("/pay/RSA2/sbPubkey.txt"))
+	pk, err = os.ReadFile(getPath("/config/RSA2/sbPubkey.txt"))
 	if err != nil {
 		panic(err)
 	}
 	sbPubKey = fmt.Sprintf("-----BEGIN RSA PRIVATE KEY-----\n%s\n-----END RSA PRIVATE KEY-----", string(pk))
 
-	pk, err = os.ReadFile(getPath("/pay/RSA2/sbPriKey.txt"))
+	pk, err = os.ReadFile(getPath("/config/RSA2/sbPriKey.txt"))
 	if err != nil {
 		panic("get rsa private key failed")
 	}
 	sbPrivKey = fmt.Sprintf("-----BEGIN RSA PRIVATE KEY-----\n%s\n-----END RSA PRIVATE KEY-----", string(pk))
 
-	pk, err = os.ReadFile(getPath("/pay/RSA2/sbAliKey.txt"))
+	pk, err = os.ReadFile(getPath("/config/RSA2/sbAliKey.txt"))
 	if err != nil {
 		panic("get rsa private key failed")
 	}
@@ -96,11 +94,16 @@ func init() {
 }
 
 func getPath(p string) string {
-	_, filename, _, _ := runtime.Caller(0)
+	basePath, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 
-	// 比如找到当前 LuXun下面的泛型.xmind
-	baseDir := path.Dir(path.Dir(filename))
-	return filepath.Join(baseDir, p)
+	if basePath == "" {
+		basePath = "."
+	}
+
+	return filepath.Join(basePath, p)
 }
 
 type Alipay struct {

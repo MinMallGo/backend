@@ -5,6 +5,8 @@ import (
 	"gopkg.in/ini.v1"
 	"log"
 	"mall_backend/structure"
+	"os"
+	"path"
 	"sync"
 )
 
@@ -16,7 +18,11 @@ var once sync.Once
 func ConfigInstance(filename string) {
 	once.Do(func() {
 		if len(filename) == 0 {
-			filename = "config.ini"
+			crtPath, err := os.Getwd()
+			if err != nil {
+				log.Fatal(err)
+			}
+			filename = path.Join(crtPath, "config/config.ini")
 		}
 		log.Println(filename)
 		config = &structure.Config{}

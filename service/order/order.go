@@ -162,12 +162,16 @@ func Pay(c *gin.Context, order *dto.PayOrder) {
 		// 考虑一下，如果这里返回的地址用户点击后没有支付然乎关闭了。再点进来。订单还没有支付，应该继续返回支付页面才对撒
 		// 这时候肯定再order_pay_log里面存在
 		one, err := dao.NewOrderPayLogDao(util.DBClient()).One(order.OrderCode)
-		if err != nil {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			response.Error(c, err)
 			return
 		}
-		response.Success(c, one.PayQueryData)
-		return
+		
+		if one != nil {
+			response.Success(c, one.PayQueryData)
+			return
+		}
+
 	}
 
 	user, err := dao.NewUserDao(util.DBClient()).CurrentUser(c.GetHeader("token"))

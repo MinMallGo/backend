@@ -32,12 +32,12 @@ func main() {
 	initNecessary()
 	service.Menu()
 	// 启动
-	panic(g.Run())
+	panic(g.Run(":7890"))
 }
 
 func initNecessary() {
 	// 初始化配置文件解析
-	util.ConfigInstance("config.ini")
+	util.ConfigInstance("")
 	// 初始化DB,Redis连接，以提前发发现错误
 	if _, err := util.DBInstance(); err != nil {
 		panic(err)

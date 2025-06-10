@@ -7,6 +7,7 @@ import (
 	"log"
 	"mall_backend/structure"
 	"sync"
+	"time"
 )
 
 // 写一个redis的单例模式
@@ -34,9 +35,12 @@ func conn() *structure.RedisClient {
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", config.Host, config.Port),
-		Password: config.Password,
-		DB:       config.DB,
+		Addr:         fmt.Sprintf("%s:%d", config.Host, config.Port),
+		Password:     config.Password,
+		DB:           config.DB,
+		DialTimeout:  3 * time.Second,
+		ReadTimeout:  2 * time.Second,
+		WriteTimeout: 2 * time.Second,
 	})
 
 	ctx := context.Background()

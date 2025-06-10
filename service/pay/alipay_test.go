@@ -72,3 +72,16 @@ func TestSyncSignVerify(t *testing.T) {
 	}
 	log.Println(string(marshal) == rightS)
 }
+
+func TestAlipay_Cancel(t *testing.T) {
+	t.Helper()
+	ali := NewAlipay(true)
+	m := map[string]string{
+		"refund_amount": "554.00",
+		"out_trade_no":  "order20250508bzjcclhqbmrjgxsxy",
+	}
+	err := ali.Cancel(m)
+	if err != nil {
+		panic(err)
+	}
+}
